@@ -170,19 +170,10 @@ SUBROUTINE cegterg( npw, npwx, nvec, nvecx, npol, evc, ethr, &
   !
   CALL mp_sum( hc( :, 1:nbase ), intra_bgrp_comm )
   !
-  IF ( uspp ) THEN
-     !
-     CALL ZGEMM( 'C', 'N', nbase, nbase, kdim, ONE, &
-                 psi, kdmx, spsi, kdmx, ZERO, sc, nvecx )
-     !     
-  ELSE
-     !
-     CALL ZGEMM( 'C', 'N', nbase, nbase, kdim, ONE, &
-                 psi, kdmx, psi, kdmx, ZERO, sc, nvecx )
-     !
-  END IF
-  !
-  CALL mp_sum( sc( :, 1:nbase ), intra_bgrp_comm )
+  ! evc is orthonormal
+  do n=1,nbase
+    sc(n,n) = 1.d0
+  enddo
   !
   IF ( lrot ) THEN
      !
