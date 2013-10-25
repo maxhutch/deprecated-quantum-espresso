@@ -23,12 +23,18 @@ FUNCTION efermig (et, nbnd, nks, nelec, wk, Degauss, Ngauss, is, isk)
   real(DP), intent(in) :: wk (nks), et (nbnd, nks), Degauss, nelec
   real(DP) :: efermig
   !
-  real(DP), parameter :: eps= 1.0d-10
+  real(DP) :: eps= 1.0d-20
   integer, parameter :: maxiter = 300
   ! internal variables
   real(DP) :: Ef, Eup, Elw, sumkup, sumklw, sumkmid
   real(DP), external::  sumkg
+  real(DP) :: dg_local
   integer :: i, kpoint
+  ! Setup
+  dg_local = Degauss
+  do while (nelec + eps == nelec)
+    eps = eps * 10.d0
+  enddo
   !
   !      find bounds for the Fermi energy. Very safe choice!
   !
@@ -50,17 +56,19 @@ FUNCTION efermig (et, nbnd, nks, nelec, wk, Degauss, Ngauss, is, isk)
   !
   !      Bisection method
   !
-  sumkup = sumkg (et, nbnd, nks, wk, Degauss, Ngauss, Eup, is, isk)
-  sumklw = sumkg (et, nbnd, nks, wk, Degauss, Ngauss, Elw, is, isk)
+  sumkup = sumkg (et, nbnd, nks, wk, dg_local, Ngauss, Eup, is, isk)
+  sumklw = sumkg (et, nbnd, nks, wk, dg_local, Ngauss, Elw, is, isk)
   if ( (sumkup - nelec) < -eps .or. (sumklw - nelec) > eps )  &
        call errore ('efermig', 'internal error, cannot bracket Ef', 1)
   do i = 1, maxiter
      Ef = (Eup + Elw) / 2.d0
-     sumkmid = sumkg (et, nbnd, nks, wk, Degauss, Ngauss, Ef, is, isk)
-     if (abs (sumkmid-nelec) < eps) then
+     sumkmid = sumkg (et, nbnd, nks, wk, dg_local, Ngauss, Ef, is, isk)
+     if (abs (sumkmid-nelec) < eps .and. Eup - Elw < 7.35d-6 ) then
         efermig = Ef
         return
-     elseif ( (sumkmid-nelec) < -eps) then
+     else if ( abs(sumkmid-nelec) < eps) then
+       dg_local = dg_local * 2.d0
+     else if ( sumkmid < nelec) then
         Elw = Ef
      else
         Eup = Ef

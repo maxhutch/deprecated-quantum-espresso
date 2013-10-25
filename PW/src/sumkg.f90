@@ -35,12 +35,12 @@ function sumkg (et, nbnd, nks, wk, degauss, ngauss, e, is, isk)
   !
   real(DP), external :: wgauss
   ! function which compute the smearing
-  real(DP) ::sum1
+  real(kind=16) ::sum1, sum2
   integer :: ik, ibnd
   ! counter on k points
   ! counter on the band energy
   !
-  sumkg = 0.d0
+  sum2 = 0.q0
   do ik = 1, nks
      sum1 = 0.d0
      if (is /= 0) then
@@ -49,8 +49,9 @@ function sumkg (et, nbnd, nks, wk, degauss, ngauss, e, is, isk)
      do ibnd = 1, nbnd
         sum1 = sum1 + wgauss ( (e-et (ibnd, ik) ) / degauss, ngauss)
      enddo
-     sumkg = sumkg + wk (ik) * sum1
+     sum2 = sum2 + wk (ik) * sum1
   enddo
+  sumkg = sum2 
 #ifdef __MPI
   call mp_sum ( sumkg, inter_pool_comm )
 #endif
