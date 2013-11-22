@@ -40,7 +40,8 @@ SUBROUTINE lr_readin
   USE control_flags,       ONLY : tqr, twfcollect, ethr
   USE iotk_module
   USE charg_resp,          ONLY : w_T_prefix, omeg, w_T_npol, epsil
-  USE mp,                  ONLY : mp_bcast,mp_barrier
+  USE mp,                  ONLY : mp_bcast
+  USE mp_world,            ONLY : world_comm
   USE mp_global,           ONLY : my_pool_id, intra_image_comm, &
                                   & intra_bgrp_comm, nproc_image, &
                                   & nproc_pool, nproc_pool_file, &
@@ -66,12 +67,12 @@ SUBROUTINE lr_readin
   !
   NAMELIST / lr_input / restart, restart_step ,lr_verbosity, prefix, outdir, test_case_no, wfcdir, disk_io, max_seconds
   NAMELIST / lr_control / itermax, ipol, ltammd, real_space, real_space_debug, charge_response, tqr, auto_rs, no_hxc, n_ipol, &
-       & project, scissor, ecutfock, pseudo_hermitian
+       & project, scissor, ecutfock, pseudo_hermitian,d0psi_rs
   NAMELIST / lr_post / omeg, beta_gamma_z_prefix, w_T_npol, plot_type, epsil, itermax_int
   namelist / lr_dav / num_eign, num_init, num_basis_max, residue_conv_thr, precondition,dav_debug, reference,single_pole,&
                           &sort_contr, diag_of_h, close_pre,broadening,print_spectrum,start,finish,step,if_check_orth,&
                           &if_random_init,if_check_her,p_nbnd_occ,p_nbnd_virt,poor_of_ram,poor_of_ram2,max_iter,ecutfock,&
-			  &conv_assistant,if_dft_spectrum,no_hxc
+			  &conv_assistant,if_dft_spectrum,no_hxc,d0psi_rs
   !
   auto_rs = .TRUE.
 #ifdef __MPI
@@ -89,6 +90,7 @@ SUBROUTINE lr_readin
      prefix = 'pwscf'
      disk_io = 'default'
      ltammd = .FALSE.
+     d0psi_rs=.false.
      pseudo_hermitian=.true.
      ipol = 1
      n_ipol = 1
@@ -213,7 +215,7 @@ SUBROUTINE lr_readin
   ENDIF
   !
   CALL bcast_lr_input
-  CALL mp_bcast(auto_rs, ionode_id)
+  CALL mp_bcast(auto_rs, ionode_id, world_comm)
 #endif
   !
   current_k = 1 ! Required for restart runs as this never gets initalised 

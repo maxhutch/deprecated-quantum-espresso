@@ -104,6 +104,7 @@ PROGRAM pw2bgw
   USE kinds, ONLY : DP
   USE lsda_mod, ONLY : nspin
   USE mp, ONLY : mp_bcast
+  USE mp_world, ONLY : world_comm
   USE mp_global, ONLY : mp_startup
   USE paw_variables, ONLY : okpaw
   USE scf, ONLY : rho_core, rhog_core
@@ -164,7 +165,7 @@ PROGRAM pw2bgw
   character (len=1), external :: lowercase
 
 #ifdef __PARA
-  CALL mp_startup ( )
+  CALL mp_startup ( world_comm )
 #endif
   CALL environment_start ( codename )
 
@@ -227,43 +228,43 @@ PROGRAM pw2bgw
   ENDIF
 
   tmp_dir = trimcheck ( outdir )
-  CALL mp_bcast ( outdir, ionode_id )
-  CALL mp_bcast ( tmp_dir, ionode_id )
-  CALL mp_bcast ( prefix, ionode_id )
-  CALL mp_bcast ( real_or_complex, ionode_id )
-  CALL mp_bcast ( symm_type, ionode_id )
-  CALL mp_bcast ( wfng_flag, ionode_id )
-  CALL mp_bcast ( wfng_file, ionode_id )
-  CALL mp_bcast ( wfng_kgrid, ionode_id )
-  CALL mp_bcast ( wfng_nk1, ionode_id )
-  CALL mp_bcast ( wfng_nk2, ionode_id )
-  CALL mp_bcast ( wfng_nk3, ionode_id )
-  CALL mp_bcast ( wfng_dk1, ionode_id )
-  CALL mp_bcast ( wfng_dk2, ionode_id )
-  CALL mp_bcast ( wfng_dk3, ionode_id )
-  CALL mp_bcast ( wfng_occupation, ionode_id )
-  CALL mp_bcast ( wfng_nvmin, ionode_id )
-  CALL mp_bcast ( wfng_nvmax, ionode_id )
-  CALL mp_bcast ( rhog_flag, ionode_id )
-  CALL mp_bcast ( rhog_file, ionode_id )
-  CALL mp_bcast ( rhog_nvmin, ionode_id )
-  CALL mp_bcast ( rhog_nvmax, ionode_id )
-  CALL mp_bcast ( vxcg_flag, ionode_id )
-  CALL mp_bcast ( vxcg_file, ionode_id )
-  CALL mp_bcast ( vxc0_flag, ionode_id )
-  CALL mp_bcast ( vxc0_file, ionode_id )
-  CALL mp_bcast ( vxc_flag, ionode_id )
-  CALL mp_bcast ( vxc_integral, ionode_id )
-  CALL mp_bcast ( vxc_file, ionode_id )
-  CALL mp_bcast ( vxc_diag_nmin, ionode_id )
-  CALL mp_bcast ( vxc_diag_nmax, ionode_id )
-  CALL mp_bcast ( vxc_offdiag_nmin, ionode_id )
-  CALL mp_bcast ( vxc_offdiag_nmax, ionode_id )
-  CALL mp_bcast ( vxc_zero_rho_core, ionode_id )
-  CALL mp_bcast ( vscg_flag, ionode_id )
-  CALL mp_bcast ( vscg_file, ionode_id )
-  CALL mp_bcast ( vkbg_flag, ionode_id )
-  CALL mp_bcast ( vkbg_file, ionode_id )
+  CALL mp_bcast ( outdir, ionode_id, world_comm )
+  CALL mp_bcast ( tmp_dir, ionode_id, world_comm )
+  CALL mp_bcast ( prefix, ionode_id, world_comm )
+  CALL mp_bcast ( real_or_complex, ionode_id, world_comm )
+  CALL mp_bcast ( symm_type, ionode_id, world_comm )
+  CALL mp_bcast ( wfng_flag, ionode_id, world_comm )
+  CALL mp_bcast ( wfng_file, ionode_id, world_comm )
+  CALL mp_bcast ( wfng_kgrid, ionode_id, world_comm )
+  CALL mp_bcast ( wfng_nk1, ionode_id, world_comm )
+  CALL mp_bcast ( wfng_nk2, ionode_id, world_comm )
+  CALL mp_bcast ( wfng_nk3, ionode_id, world_comm )
+  CALL mp_bcast ( wfng_dk1, ionode_id, world_comm )
+  CALL mp_bcast ( wfng_dk2, ionode_id, world_comm )
+  CALL mp_bcast ( wfng_dk3, ionode_id, world_comm )
+  CALL mp_bcast ( wfng_occupation, ionode_id, world_comm )
+  CALL mp_bcast ( wfng_nvmin, ionode_id, world_comm )
+  CALL mp_bcast ( wfng_nvmax, ionode_id, world_comm )
+  CALL mp_bcast ( rhog_flag, ionode_id, world_comm )
+  CALL mp_bcast ( rhog_file, ionode_id, world_comm )
+  CALL mp_bcast ( rhog_nvmin, ionode_id, world_comm )
+  CALL mp_bcast ( rhog_nvmax, ionode_id, world_comm )
+  CALL mp_bcast ( vxcg_flag, ionode_id, world_comm )
+  CALL mp_bcast ( vxcg_file, ionode_id, world_comm )
+  CALL mp_bcast ( vxc0_flag, ionode_id, world_comm )
+  CALL mp_bcast ( vxc0_file, ionode_id, world_comm )
+  CALL mp_bcast ( vxc_flag, ionode_id, world_comm )
+  CALL mp_bcast ( vxc_integral, ionode_id, world_comm )
+  CALL mp_bcast ( vxc_file, ionode_id, world_comm )
+  CALL mp_bcast ( vxc_diag_nmin, ionode_id, world_comm )
+  CALL mp_bcast ( vxc_diag_nmax, ionode_id, world_comm )
+  CALL mp_bcast ( vxc_offdiag_nmin, ionode_id, world_comm )
+  CALL mp_bcast ( vxc_offdiag_nmax, ionode_id, world_comm )
+  CALL mp_bcast ( vxc_zero_rho_core, ionode_id, world_comm )
+  CALL mp_bcast ( vscg_flag, ionode_id, world_comm )
+  CALL mp_bcast ( vscg_file, ionode_id, world_comm )
+  CALL mp_bcast ( vkbg_flag, ionode_id, world_comm )
+  CALL mp_bcast ( vkbg_file, ionode_id, world_comm )
 
   CALL read_file ( )
 
@@ -410,9 +411,10 @@ SUBROUTINE write_wfng ( output_file_name, real_or_complex, symm_type, &
   USE klist, ONLY : xk, wk, ngk, nks, nkstot
   USE lsda_mod, ONLY : nspin, isk
   USE mp, ONLY : mp_sum, mp_max, mp_get, mp_bcast, mp_barrier
-  USE mp_global, ONLY : mpime, nproc, world_comm, kunit, me_pool, &
+  USE mp_pools, ONLY : kunit, me_pool, &
     root_pool, my_pool_id, npool, nproc_pool, intra_pool_comm
   USE mp_wave, ONLY : mergewf
+  USE mp_world, ONLY : mpime, nproc, world_comm
   USE start_k, ONLY : nk1, nk2, nk3, k1, k2, k3
   USE symm_base, ONLY : s, ftau, nsym
   USE wavefunctions_module, ONLY : evc
@@ -531,7 +533,7 @@ SUBROUTINE write_wfng ( output_file_name, real_or_complex, symm_type, &
     IF ( ik .GE. iks .AND. ik .LE. ike .AND. is .NE. isk ( ik ) ) &
       ierr = ierr + 1
   ENDDO
-  CALL mp_max ( ierr )
+  CALL mp_max ( ierr, world_comm )
   IF ( ierr .GT. 0 ) &
     CALL errore ( 'write_wfng', 'smap', ierr )
 
@@ -622,7 +624,7 @@ SUBROUTINE write_wfng ( output_file_name, real_or_complex, symm_type, &
   ENDDO
 #ifdef __PARA
   CALL poolrecover ( et_g, nb, nk_g, nk_l )
-  CALL mp_bcast ( et_g, ionode_id )
+  CALL mp_bcast ( et_g, ionode_id, world_comm )
 #endif
 
   ALLOCATE ( wg_g ( nb, nk_g ) )
@@ -719,10 +721,10 @@ SUBROUTINE write_wfng ( output_file_name, real_or_complex, symm_type, &
   DO ik = 1, nk_l
     ngk_g ( ik + iks - 1 ) = ngk ( ik )
   ENDDO
-  CALL mp_sum ( ngk_g )
+  CALL mp_sum ( ngk_g, world_comm )
 
   npw_g = MAXVAL ( igk_l2g ( :, : ) )
-  CALL mp_max ( npw_g )
+  CALL mp_max ( npw_g, world_comm )
 
   npwx_g = MAXVAL ( ngk_g ( : ) )
 
@@ -804,7 +806,7 @@ SUBROUTINE write_wfng ( output_file_name, real_or_complex, symm_type, &
         itmp ( igk_l2g ( ig, ik - iks + 1 ) ) = igk_l2g ( ig, ik - iks + 1 )
       ENDDO
     ENDIF
-    CALL mp_sum ( itmp )
+    CALL mp_sum ( itmp, world_comm )
     ngg = 0
     DO ig = 1, npw_g
       IF ( itmp ( ig ) .EQ. ig ) THEN
@@ -853,7 +855,7 @@ SUBROUTINE write_wfng ( output_file_name, real_or_complex, symm_type, &
       IF ( ( ik .GE. iks ) .AND. ( ik .LE. ike ) ) THEN
         IF ( me_pool .EQ. root_pool ) ipmask ( mpime + 1 ) = 1
       ENDIF
-      CALL mp_sum ( ipmask )
+      CALL mp_sum ( ipmask, world_comm )
       DO j = 1, nproc
         IF ( ipmask ( j ) .EQ. 1 ) ipsour = j - 1
       ENDDO
@@ -866,11 +868,11 @@ SUBROUTINE write_wfng ( output_file_name, real_or_complex, symm_type, &
       igwx = MAXVAL ( igwf_l2g ( 1 : local_pw ) )
     CALL mp_max ( igwx, intra_pool_comm )
     IF ( ipsour .NE. ionode_id ) &
-      CALL mp_get ( igwx, igwx, mpime, ionode_id, ipsour, 1 )
+      CALL mp_get ( igwx, igwx, mpime, ionode_id, ipsour, 1, world_comm )
     ierr = 0
     IF ( ik .GE. iks .AND. ik .LE. ike .AND. igwx .NE. ngk_g ( ik ) ) &
       ierr = 1
-    CALL mp_max ( ierr )
+    CALL mp_max ( ierr, world_comm )
     IF ( ierr .GT. 0 ) &
       CALL errore ( 'write_wfng', 'igwx ngk_g', ierr )
 
@@ -903,7 +905,7 @@ SUBROUTINE write_wfng ( output_file_name, real_or_complex, symm_type, &
           wfng_buf ( ig, is ) = ( 0.0D0, 0.0D0 )
         ENDDO
 #ifdef __PARA
-        CALL mp_barrier ( )
+        CALL mp_barrier ( world_comm )
         CALL MPI_Scatter ( wfng_buf ( :, is ), ngkdist_l, MPI_DOUBLE_COMPLEX, &
         wfng_dist ( :, ib, is ), ngkdist_l, MPI_DOUBLE_COMPLEX, &
         ionode_id, world_comm, ierr )
@@ -936,7 +938,7 @@ SUBROUTINE write_wfng ( output_file_name, real_or_complex, symm_type, &
       DO ib = 1, nb
         DO is = 1, ns
 #ifdef __PARA
-          CALL mp_barrier ( )
+          CALL mp_barrier ( world_comm )
           CALL MPI_Gather ( wfng_dist ( :, ib, is ), ngkdist_l, &
           MPI_DOUBLE_COMPLEX, wfng_buf ( :, is ), ngkdist_l, &
           MPI_DOUBLE_COMPLEX, ionode_id, world_comm, ierr )
@@ -984,7 +986,7 @@ SUBROUTINE write_wfng ( output_file_name, real_or_complex, symm_type, &
   DEALLOCATE ( smap )
   DEALLOCATE ( kmap )
 
-  CALL mp_barrier ( )
+  CALL mp_barrier ( world_comm )
 
   RETURN
 
@@ -1000,6 +1002,7 @@ SUBROUTINE real_wfng ( ik, ngkdist_l, nb, ns, energy, wfng_dist )
   USE kinds, ONLY : DP
   USE io_global, ONLY : ionode
   USE mp, ONLY : mp_sum
+  USE mp_world, ONLY : world_comm
 
   IMPLICIT NONE
 
@@ -1076,7 +1079,7 @@ SUBROUTINE real_wfng ( ik, ngkdist_l, nb, ns, energy, wfng_dist )
         DO ig = 1, ngkdist_l
           x = x + dble ( wfc ( ig ) ) **2
         ENDDO
-        CALL mp_sum ( x )
+        CALL mp_sum ( x, world_comm )
         IF ( x .LT. eps2 ) null_map ( inull ( i ), i ) = 0
         IF ( x .GT. eps2 ) null_map ( inull ( i ), i ) = 1
         inull ( i ) = inull ( i ) + 1
@@ -1084,7 +1087,7 @@ SUBROUTINE real_wfng ( ik, ngkdist_l, nb, ns, energy, wfng_dist )
         DO ig = 1, ngkdist_l
           x = x + aimag ( wfc ( ig ) ) **2
         ENDDO
-        CALL mp_sum ( x )
+        CALL mp_sum ( x, world_comm )
         IF ( x .LT. eps2 ) null_map ( inull ( i ), i ) = 0
         IF ( x .GT. eps2 ) null_map ( inull ( i ), i ) = 1
         inull ( i ) = inull ( i ) + 1
@@ -1128,7 +1131,7 @@ SUBROUTINE real_wfng ( ik, ngkdist_l, nb, ns, energy, wfng_dist )
         DO ig = 1, ngkdist_l
           x = x + phi ( ig, j ) **2
         ENDDO
-        CALL mp_sum ( x )
+        CALL mp_sum ( x, world_comm )
         x = sqrt ( x )
         DO ig = 1, ngkdist_l
           phi ( ig, j ) = phi ( ig, j ) / x
@@ -1150,7 +1153,7 @@ SUBROUTINE real_wfng ( ik, ngkdist_l, nb, ns, energy, wfng_dist )
           DO ig = 1, ngkdist_l
             x = x + phi ( ig, j + 1 ) * psi ( ig, k )
           ENDDO
-          CALL mp_sum ( x )
+          CALL mp_sum ( x, world_comm )
           DO ig = 1, ngkdist_l
             vec ( ig ) = vec ( ig ) - psi ( ig, k ) * x
           ENDDO
@@ -1159,7 +1162,7 @@ SUBROUTINE real_wfng ( ik, ngkdist_l, nb, ns, energy, wfng_dist )
         DO ig = 1, ngkdist_l
           x = x + vec ( ig ) **2
         ENDDO
-        CALL mp_sum ( x )
+        CALL mp_sum ( x, world_comm )
         x = sqrt ( x )
         IF ( x .GT. eps6 ) THEN
           reduced_span = reduced_span + 1
@@ -1216,7 +1219,8 @@ SUBROUTINE write_rhog ( output_file_name, real_or_complex, symm_type, &
   USE kinds, ONLY : DP
   USE lsda_mod, ONLY : nspin
   USE mp, ONLY : mp_sum
-  USE mp_global, ONLY : intra_pool_comm
+  USE mp_world, ONLY : world_comm
+  USE mp_pools, ONLY : intra_pool_comm
   USE scf, ONLY : rho
   USE symm_base, ONLY : s, ftau, nsym
 
@@ -1424,7 +1428,8 @@ SUBROUTINE calc_rhog (rhog_nvmin, rhog_nvmax)
   USE klist, ONLY : xk, nkstot
   USE lsda_mod, ONLY : nspin, isk
   USE mp, ONLY : mp_sum
-  USE mp_global, ONLY : kunit, my_pool_id, inter_pool_comm, npool
+  USE mp_world, ONLY : world_comm
+  USE mp_pools, ONLY : kunit, my_pool_id, inter_pool_comm, npool
   USE noncollin_module, ONLY : nspin_mag
   USE scf, ONLY : rho
   USE symme, ONLY : sym_rho, sym_rho_init
@@ -1502,7 +1507,7 @@ SUBROUTINE write_vxcg ( output_file_name, real_or_complex, symm_type, &
   USE kinds, ONLY : DP
   USE lsda_mod, ONLY : nspin
   USE mp, ONLY : mp_sum
-  USE mp_global, ONLY : intra_pool_comm
+  USE mp_pools, ONLY : intra_pool_comm
   USE scf, ONLY : rho, rho_core, rhog_core
   USE symm_base, ONLY : s, ftau, nsym
   USE wavefunctions_module, ONLY : psic
@@ -1713,7 +1718,7 @@ SUBROUTINE write_vxc0 ( output_file_name, vxc_zero_rho_core )
   USE kinds, ONLY : DP
   USE lsda_mod, ONLY : nspin
   USE mp, ONLY : mp_sum
-  USE mp_global, ONLY : intra_pool_comm
+  USE mp_pools, ONLY : intra_pool_comm
   USE scf, ONLY : rho, rho_core, rhog_core
   USE wavefunctions_module, ONLY : psic
 
@@ -1806,7 +1811,7 @@ SUBROUTINE write_vxc_r (output_file_name, diag_nmin, diag_nmax, &
   USE klist, ONLY : xk, nkstot
   USE lsda_mod, ONLY : nspin, isk
   USE mp, ONLY : mp_sum
-  USE mp_global, ONLY : kunit, my_pool_id, intra_pool_comm, &
+  USE mp_pools, ONLY : kunit, my_pool_id, intra_pool_comm, &
     inter_pool_comm, npool
   USE scf, ONLY : rho, rho_core, rhog_core
   USE wavefunctions_module, ONLY : evc, psic
@@ -1998,7 +2003,7 @@ SUBROUTINE write_vxc_g (output_file_name, diag_nmin, diag_nmax, &
   USE klist, ONLY : xk, nkstot
   USE lsda_mod, ONLY : nspin, isk
   USE mp, ONLY : mp_sum
-  USE mp_global, ONLY : kunit, my_pool_id, intra_pool_comm, &
+  USE mp_pools, ONLY : kunit, my_pool_id, intra_pool_comm, &
     inter_pool_comm, npool
   USE scf, ONLY : rho, rho_core, rhog_core
   USE wavefunctions_module, ONLY : evc, psic
@@ -2210,7 +2215,7 @@ SUBROUTINE write_vscg ( output_file_name, real_or_complex, symm_type )
   USE kinds, ONLY : DP
   USE lsda_mod, ONLY : nspin
   USE mp, ONLY : mp_sum
-  USE mp_global, ONLY : intra_pool_comm
+  USE mp_pools, ONLY : intra_pool_comm
   USE scf, ONLY : vltot, v
   USE symm_base, ONLY : s, ftau, nsym
   USE wavefunctions_module, ONLY : psic
@@ -2419,8 +2424,9 @@ SUBROUTINE write_vkbg (output_file_name, symm_type, wfng_kgrid, &
   USE klist, ONLY : xk, wk, ngk, nks, nkstot
   USE lsda_mod, ONLY : nspin, isk
   USE mp, ONLY : mp_sum, mp_max, mp_get, mp_barrier
-  USE mp_global, ONLY : mpime, nproc, world_comm, kunit, me_pool, &
-    root_pool, my_pool_id, npool, nproc_pool, intra_pool_comm
+  USE mp_world, ONLY : mpime, nproc, world_comm
+  USE mp_pools, ONLY : kunit, me_pool, root_pool, my_pool_id, npool, &
+                       nproc_pool, intra_pool_comm
   USE mp_wave, ONLY : mergewf
   USE start_k, ONLY : nk1, nk2, nk3, k1, k2, k3
   USE symm_base, ONLY : s, ftau, nsym
@@ -2575,7 +2581,7 @@ SUBROUTINE write_vkbg (output_file_name, symm_type, wfng_kgrid, &
     IF ( ik .GE. iks .AND. ik .LE. ike .AND. is .NE. isk ( ik ) ) &
       ierr = ierr + 1
   ENDDO
-  CALL mp_max ( ierr )
+  CALL mp_max ( ierr, world_comm )
   IF ( ierr .GT. 0 ) &
     CALL errore ( 'write_vkbg', 'smap', ierr )
 
@@ -2607,9 +2613,9 @@ SUBROUTINE write_vkbg (output_file_name, symm_type, wfng_kgrid, &
   DO ik = 1, nks
     ngk_g ( ik + iks - 1 ) = ngk ( ik )
   ENDDO
-  CALL mp_sum ( ngk_g )
+  CALL mp_sum ( ngk_g, world_comm )
   npw_g = MAXVAL ( igk_l2g ( :, : ) )
-  CALL mp_max ( npw_g )
+  CALL mp_max ( npw_g, world_comm )
   npwx_g = MAXVAL ( ngk_g ( : ) )
 
   CALL cryst_to_cart (nkstot, xk, at, -1)
@@ -2664,7 +2670,7 @@ SUBROUTINE write_vkbg (output_file_name, symm_type, wfng_kgrid, &
         itmp ( igk_l2g ( ig, ik - iks + 1 ) ) = igk_l2g ( ig, ik - iks + 1 )
       ENDDO
     ENDIF
-    CALL mp_sum ( itmp )
+    CALL mp_sum ( itmp, world_comm )
     ngg = 0
     DO ig = 1, npw_g
       IF ( itmp ( ig ) .EQ. ig ) THEN
@@ -2713,7 +2719,7 @@ SUBROUTINE write_vkbg (output_file_name, symm_type, wfng_kgrid, &
       IF ( ( ik .GE. iks ) .AND. ( ik .LE. ike ) ) THEN
         IF ( me_pool .EQ. root_pool ) ipmask ( mpime + 1 ) = 1
       ENDIF
-      CALL mp_sum ( ipmask )
+      CALL mp_sum ( ipmask, world_comm )
       DO j = 1, nproc
         IF ( ipmask ( j ) .EQ. 1 ) ipsour = j - 1
       ENDDO
@@ -2726,11 +2732,11 @@ SUBROUTINE write_vkbg (output_file_name, symm_type, wfng_kgrid, &
       igwx = MAXVAL ( igwf_l2g ( 1 : local_pw ) )
     CALL mp_max ( igwx, intra_pool_comm )
     IF ( ipsour .NE. ionode_id ) &
-      CALL mp_get ( igwx, igwx, mpime, ionode_id, ipsour, 1 )
+      CALL mp_get ( igwx, igwx, mpime, ionode_id, ipsour, 1, world_comm )
     ierr = 0
     IF ( ik .GE. iks .AND. ik .LE. ike .AND. igwx .NE. ngk_g ( ik ) ) &
       ierr = 1
-    CALL mp_max ( ierr )
+    CALL mp_max ( ierr, world_comm )
     IF ( ierr .GT. 0 ) &
       CALL errore ( 'write_vkbg', 'igwx ngk_g', ierr )
 

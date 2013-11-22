@@ -25,7 +25,7 @@ SUBROUTINE make_pointlists
   USE io_global,  ONLY : stdout
   USE ions_base,  ONLY : nat, tau, ntyp => nsp, ityp
   USE cell_base,  ONLY : at, bg, alat
-  USE mp_global,  ONLY : me_bgrp
+  USE mp_bands,   ONLY : me_bgrp
   USE fft_base,   ONLY : dfftp
 
   USE noncollin_module, ONLY : factlist, pointlist, r_m
@@ -46,7 +46,6 @@ SUBROUTINE make_pointlists
 
   ! In the parallel case, find the index-offset to account for the planes
   ! treated by other procs
-
 #if defined (__MPI)
       idx0 = dfftp%nr1x*dfftp%nr2x * dfftp%ipp(me_bgrp+1)
 #else

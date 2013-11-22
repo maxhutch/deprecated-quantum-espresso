@@ -15,6 +15,7 @@ SUBROUTINE stop_lr( full_run  )
   ! Modified by O. Baris Malcioglu (2009)
   USE kinds, ONLY : DP
   USE mp,    ONLY : mp_end, mp_barrier
+  USE mp_world,    ONLY : world_comm
   !
   USE parallel_include
   USE lr_variables,         ONLY : n_ipol, LR_polarization, beta_store
@@ -93,9 +94,9 @@ SUBROUTINE stop_lr( full_run  )
   !
   CALL environment_end(code)
   !
-  CALL mp_barrier()
+  CALL mp_barrier(world_comm)
   !
-  CALL mp_end()
+  CALL mp_end(world_comm)
   !
 #if defined (__T3E)
   !

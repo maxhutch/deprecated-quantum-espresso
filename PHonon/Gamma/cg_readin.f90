@@ -19,8 +19,9 @@ SUBROUTINE cg_readin()
   USE io_files,  ONLY : tmp_dir, prefix
   USE io_global, ONLY : ionode, ionode_id
   USE noncollin_module, ONLY : noncolin
-  USE mp_global, ONLY : nbgrp, get_ntask_groups
+  USE mp_bands,  ONLY : nbgrp, ntask_groups
   USE mp,        ONLY : mp_bcast
+  USE mp_world,  ONLY : world_comm
   !
   IMPLICIT NONE
   !
@@ -62,23 +63,23 @@ SUBROUTINE cg_readin()
      !
   ENDIF
   !
-  CALL mp_bcast(prefix,ionode_id)
-  CALL mp_bcast(fildyn,ionode_id)
-  CALL mp_bcast(trans,ionode_id)
-  CALL mp_bcast(epsil,ionode_id)
-  CALL mp_bcast(raman,ionode_id)
-  CALL mp_bcast(nmodes,ionode_id)
-  CALL mp_bcast(tr2_ph,ionode_id)
-  CALL mp_bcast(niter_ph,ionode_id)
-  CALL mp_bcast(amass,ionode_id)
-  CALL mp_bcast(tr2_ph,ionode_id)
-  CALL mp_bcast(tmp_dir,ionode_id)
-  CALL mp_bcast(asr,ionode_id)
-  CALL mp_bcast(deltatau,ionode_id)
-  CALL mp_bcast(nderiv,ionode_id)
-  CALL mp_bcast(first,ionode_id)
-  CALL mp_bcast(last,ionode_id)
-  CALL mp_bcast(recover,ionode_id)
+  CALL mp_bcast(prefix,ionode_id,world_comm)
+  CALL mp_bcast(fildyn,ionode_id,world_comm)
+  CALL mp_bcast(trans,ionode_id,world_comm)
+  CALL mp_bcast(epsil,ionode_id,world_comm)
+  CALL mp_bcast(raman,ionode_id,world_comm)
+  CALL mp_bcast(nmodes,ionode_id,world_comm)
+  CALL mp_bcast(tr2_ph,ionode_id,world_comm)
+  CALL mp_bcast(niter_ph,ionode_id,world_comm)
+  CALL mp_bcast(amass,ionode_id,world_comm)
+  CALL mp_bcast(tr2_ph,ionode_id,world_comm)
+  CALL mp_bcast(tmp_dir,ionode_id,world_comm)
+  CALL mp_bcast(asr,ionode_id,world_comm)
+  CALL mp_bcast(deltatau,ionode_id,world_comm)
+  CALL mp_bcast(nderiv,ionode_id,world_comm)
+  CALL mp_bcast(first,ionode_id,world_comm)
+  CALL mp_bcast(last,ionode_id,world_comm)
+  CALL mp_bcast(recover,ionode_id,world_comm)
   !
   !  read the input file produced by the pwscf program
   !  allocate memory and recalculate what is needed
@@ -91,13 +92,13 @@ SUBROUTINE cg_readin()
   !
   IF (.not. gamma_only) CALL errore('cg_readin', &
       'need pw.x data file produced using Gamma tricks',1)
-!
-!   Task groups not used. 
-!
-  IF (get_ntask_groups() > 1) dffts%have_task_groups=.FALSE.
-!
-!   band group not available
-!
+  !
+  !   Task groups not used. 
+  !
+  IF (ntask_groups > 1) dffts%have_task_groups=.FALSE.
+  !
+  !   band group not available
+  !
   IF (nbgrp /=1 ) &
      CALL errore('cg_readin','band parallelization not available',1)
 
@@ -140,6 +141,7 @@ SUBROUTINE cg_readmodes(iunit)
   USE cgcom
   USE io_global, ONLY : ionode, ionode_id
   USE mp,        ONLY : mp_bcast
+  USE mp_world,  ONLY : world_comm
   !
   IMPLICIT NONE
   !
@@ -200,7 +202,7 @@ SUBROUTINE cg_readmodes(iunit)
         ENDDO
         !
      ENDIF
-     CALL mp_bcast(u,ionode_id)
+     CALL mp_bcast(u,ionode_id,world_comm)
      DO nu = 1,nmodes
         DO mu = 1, nu-1
            utest = ddot(3*nat,u(1,nu),1,u(1,mu),1)

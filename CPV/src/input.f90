@@ -814,7 +814,7 @@ MODULE input
      USE ensemble_dft,     ONLY : ensemble_initval,tens
      USE wannier_base,     ONLY : wannier_init
      USE efield_module,    ONLY : tefield
-     USE funct,            ONLY : dft_is_nonlocc
+     USE funct,            ONLY : dft_is_nonlocc, get_inlc
      USE kernel_table,     ONLY : vdw_table_name_ => vdw_table_name, &
                                   initialize_kernel_table
      USE control_flags,    ONLY : llondon, ts_vdw
@@ -825,7 +825,7 @@ MODULE input
      !
      REAL(DP) :: alat_ , massa_totale
      ! ...   DIIS
-     INTEGER :: ia, iss
+     INTEGER :: ia, iss, inlc
      LOGICAL :: ltest
      !
      !   Subroutine Body
@@ -991,7 +991,8 @@ MODULE input
      !
      IF ( dft_is_nonlocc( ) ) THEN
         vdw_table_name_ = vdw_table_name
-        CALL initialize_kernel_table()
+        inlc = get_inlc()
+        call initialize_kernel_table(inlc)
      ENDIF
      !
      RETURN
@@ -1033,8 +1034,6 @@ MODULE input
 505 FORMAT(   3X,'MD Simulation time step            = ',F10.2)
 510 FORMAT(   3X,'Electronic fictitious mass (emass) = ',F10.2)
 511 FORMAT(   3X,'emass cut-off                      = ',F10.2)
-509 FORMAT(   3X,'Verlet algorithm for electron dynamics')
-502 FORMAT(   3X,'An initial quench is performed')
 
     RETURN
   END SUBROUTINE input_info

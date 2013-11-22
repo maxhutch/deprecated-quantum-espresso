@@ -60,7 +60,13 @@ program generate_kernel
   !! again, N is the number of q points chosen.  However, parallelization
   !! on this scale is unnecessary.  In testing the code runs in under a
   !! minute on 16 Intel Xeon processors.
-  
+
+  !! IMPORTANT NOTICE: results are very sensitive to compilation details.
+  !! In particular, the usage of FMA (Fused Multiply-and-Add) instructions
+  !! used by modern CPU such as AMD Interlagos (Bulldozer), Intel Ivy Bridge,
+  !!  may affect quite heavily some components of the kernel table 
+  !! (communication by Ake Sandberg, Umea University). In practice this should
+  !! not be a problem, since most affected elements are the less relevant ones.
 
   !! Some of the algorithms here are somewhat modified versions of those found
   !! in the book: 
@@ -85,7 +91,8 @@ program generate_kernel
   !! --------------------------------------------------------------------------------------------
 
   use mp,                   ONLY : mp_get, mp_end, mp_barrier
-  use mp_global,            ONLY : mp_startup, nproc, mpime
+  use mp_global,            ONLY : mp_startup
+  use mp_world,             ONLY : world_comm, nproc, mpime
   use kinds,                ONLY : dp
   use io_global,            ONLY : ionode, ionode_id
   use constants,            ONLY : pi
@@ -440,13 +447,13 @@ program generate_kernel
   !! Finally, we write out the results, after letting everybody catch up
   !! -----------------------------------------------------------------------------------------------------
 
-  call mp_barrier()
+  call mp_barrier( world_comm )
   call write_kernel_table_file(phi, d2phi_dk2)
 
   !! -----------------------------------------------------------------------------------------------------
 
   !! Finalize the mpi run using the PWSCF method
-  call mp_end()               
+  call mp_end( world_comm )               
 
   deallocate( phi, d2phi_dk2, indices, proc_indices )
 
@@ -802,7 +809,7 @@ CONTAINS
 
     do proc_i = 1, nproc-1
        
-       call mp_get(phi, phi, mpime, 0, proc_i, 0)
+       call mp_get(phi, phi, mpime, 0, proc_i, 0, world_comm)
        
        if (ionode) then
           
@@ -834,7 +841,7 @@ CONTAINS
     
     do proc_i = 1, nproc-1
        
-       call mp_get(d2phi_dk2, d2phi_dk2, mpime, 0, proc_i, 0)
+       call mp_get(d2phi_dk2, d2phi_dk2, mpime, 0, proc_i, 0, world_comm)
        
        if (mpime == 0) then
           

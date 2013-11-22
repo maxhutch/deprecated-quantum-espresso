@@ -21,7 +21,7 @@ SUBROUTINE read_file()
   USE paw_onecenter,        ONLY : paw_potential
   USE uspp,                 ONLY : becsum
   USE scf,                  ONLY : rho
-  USE realus,               ONLY : qpointlist, betapointlist, &
+  USE realus,               ONLY : betapointlist, &
                                    init_realspace_vars,real_space
   USE dfunct,               ONLY : newd
   USE ldaU,                 ONLY : lda_plus_u, U_projection
@@ -238,8 +238,8 @@ SUBROUTINE read_xml_file()
   ! ... read the vdw kernel table if needed
   !
   inlc = get_inlc()
-  if (inlc == 1 .or. inlc ==2 ) then
-      call initialize_kernel_table()
+  if (inlc > 0 ) then
+      call initialize_kernel_table(inlc)
   endif
   !
   okpaw = ANY ( upf(1:nsp)%tpawp )

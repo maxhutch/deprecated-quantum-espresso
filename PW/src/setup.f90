@@ -71,7 +71,7 @@ SUBROUTINE setup()
   USE bp,                 ONLY : gdir, lberry, nppstr, lelfield, lorbm, nx_el, nppstr_3d,l3dstring, efield
   USE fixed_occ,          ONLY : f_inp, tfixed_occ, one_atom_occupations
   USE funct,              ONLY : set_dft_from_name
-  USE mp_global,          ONLY : kunit
+  USE mp_pools,           ONLY : kunit
   USE spin_orb,           ONLY : lspinorb, domag
   USE noncollin_module,   ONLY : noncolin, npol, m_loc, i_cons, &
                                  angle1, angle2, bfield, ux, nspin_lsda, &
@@ -80,6 +80,7 @@ SUBROUTINE setup()
   USE exx,                ONLY : exx_grid_init, exx_div_check
   USE funct,              ONLY : dft_is_meta, dft_is_hybrid, dft_is_gradient
   USE paw_variables,      ONLY : okpaw
+  USE cellmd,             ONLY : lmovecell  
   !
   IMPLICIT NONE
   !
@@ -99,10 +100,9 @@ SUBROUTINE setup()
   IF ( dft_is_hybrid() ) THEN
      IF (.NOT. lscf) CALL errore( 'setup ', &
                          'HYBRID XC not allowed in non-scf calculations', 1 )
-     IF ( okvan .OR. okpaw ) CALL errore( 'setup ', &
-                         'HYBRID XC not implemented for USPP or PAW', 1 )
      IF ( ANY (upf(1:ntyp)%nlcc) ) CALL infomsg( 'setup ', 'BEWARE:' // &
                & ' nonlinear core correction is not consistent with hybrid XC')
+     IF (lmovecell) CALL errore('setup','Variable cell and EXX not tested!',1)
      IF (noncolin) no_t_rev=.true.
   END IF
   !
@@ -355,8 +355,6 @@ SUBROUTINE setup()
   ! ... Compute the cut-off of the G vectors
   !
   doublegrid = ( dual > 4.D0 )
-  IF ( doublegrid .and.  dft_is_hybrid() ) &
-     CALL errore('setup','ecutrho>4*ecutwfc and exact exchange not allowed',1)
   IF ( doublegrid .AND. (.NOT.okvan .AND. .not.okpaw) ) &
      CALL infomsg ( 'setup', 'no reason to have ecutrho>4*ecutwfc' )
   gcutm = dual * ecutwfc / tpiba2
@@ -595,21 +593,26 @@ END SUBROUTINE setup
 LOGICAL FUNCTION check_para_diag( nbnd )
   !
   USE io_global,        ONLY : stdout, ionode, ionode_id
-  USE mp_global,        ONLY : np_ortho
+  USE mp_diag,          ONLY : np_ortho
   USE control_flags,    ONLY : gamma_only
 
   IMPLICIT NONE
 
   INTEGER, INTENT(IN) :: nbnd
   LOGICAL, SAVE :: first = .TRUE.
+  LOGICAL, SAVE :: saved_value = .FALSE.
 
-  IF( .NOT. first ) RETURN
+  IF( .NOT. first ) then
+      check_para_diag = saved_value
+      RETURN
+  end if
   first = .FALSE.
   !
   IF( np_ortho(1) > nbnd ) &
      CALL errore ('check_para_diag', 'Too few bands for required ndiag',nbnd)
   !
   check_para_diag = ( np_ortho( 1 ) > 1 .AND. np_ortho( 2 ) > 1 )
+  saved_value = check_para_diag
   !
   IF ( ionode ) THEN
      !

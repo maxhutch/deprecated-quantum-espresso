@@ -39,6 +39,7 @@ MODULE path_base
   USE path_io_units_module,  ONLY : iunpath
   USE io_global, ONLY : meta_ionode, meta_ionode_id
   USE mp,        ONLY : mp_bcast
+  USE mp_world,  ONLY : world_comm
   !
   USE basic_algebra_routines
   !
@@ -58,7 +59,7 @@ MODULE path_base
       USE control_flags,    ONLY : conv_elec
       USE ions_base,        ONLY : amass, ityp
       USE io_files,         ONLY : prefix, tmp_dir
-      USE mp_global,        ONLY : nimage	
+      USE mp_global,        ONLY : nimage
       USE path_input_parameters_module, ONLY : pos_      => pos, &
                                    climbing_ => climbing, &
                                    input_images, nstep_path_ => nstep_path
@@ -202,7 +203,7 @@ MODULE path_base
             !
          END IF
          !
-         CALL mp_bcast( restart_mode, meta_ionode_id )
+         CALL mp_bcast( restart_mode, meta_ionode_id, world_comm )
          !
       END IF
       !
@@ -350,8 +351,8 @@ MODULE path_base
          !
       END IF
       !
-      CALL mp_bcast( pos,         meta_ionode_id )
-      CALL mp_bcast( path_length, meta_ionode_id )
+      CALL mp_bcast( pos,         meta_ionode_id, world_comm )
+      CALL mp_bcast( path_length, meta_ionode_id, world_comm )
       !
       RETURN
       !
@@ -524,7 +525,7 @@ MODULE path_base
          !
       END IF
       !
-      CALL mp_bcast( grad, meta_ionode_id )
+      CALL mp_bcast( grad, meta_ionode_id, world_comm )
       !
       RETURN
       !
@@ -592,8 +593,8 @@ MODULE path_base
          !
       END IF
       !
-      CALL mp_bcast( grad, meta_ionode_id )
-      CALL mp_bcast( lang, meta_ionode_id )
+      CALL mp_bcast( grad, meta_ionode_id, world_comm )
+      CALL mp_bcast( lang, meta_ionode_id, world_comm )
       !
       RETURN
       !
@@ -624,7 +625,7 @@ MODULE path_base
          !
       END IF
       !
-      CALL mp_bcast( ntan, meta_ionode_id )
+      CALL mp_bcast( ntan, meta_ionode_id, world_comm )
       !
       RETURN
       !
@@ -734,10 +735,10 @@ MODULE path_base
          !
       END IF
       !
-      CALL mp_bcast( error,   meta_ionode_id )
-      CALL mp_bcast( err_max, meta_ionode_id )
-      CALL mp_bcast( frozen,  meta_ionode_id )
-      CALL mp_bcast( posold,  meta_ionode_id )
+      CALL mp_bcast( error,   meta_ionode_id, world_comm )
+      CALL mp_bcast( err_max, meta_ionode_id, world_comm )
+      CALL mp_bcast( frozen,  meta_ionode_id, world_comm )
+      CALL mp_bcast( posold,  meta_ionode_id, world_comm )
       !
       IF ( PRESENT( err_out ) ) err_out = err_max
       !

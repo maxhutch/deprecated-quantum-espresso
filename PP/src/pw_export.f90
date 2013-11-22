@@ -42,9 +42,10 @@
       ik, nk, kunit, ispin, nspin, scal, wf0, t0, wfm, tm, ngw, gamma_only, nbnd, igl, ngwl )
 !
       USE mp_wave
-      USE mp, ONLY: mp_sum, mp_get, mp_bcast, mp_max
-      USE mp_global, ONLY: mpime, nproc, root, me_pool, my_pool_id, &
-        nproc_pool, intra_pool_comm, root_pool, world_comm
+      USE mp, ONLY: mp_sum, mp_get, mp_max
+      USE mp_pools, ONLY: me_pool, my_pool_id, &
+        nproc_pool, intra_pool_comm, root_pool
+      USE mp_world,  ONLY: mpime, nproc, root, world_comm
       USE io_global, ONLY: ionode, ionode_id
       USE iotk_module
 !
@@ -113,7 +114,7 @@
           IF( ( ikt >= iks ) .and. ( ikt <= ike ) ) THEN
             IF( me_pool == root_pool ) ipmask( mpime + 1 ) = 1
           ENDIF
-          CALL mp_sum( ipmask )
+          CALL mp_sum( ipmask, world_comm )
           DO i = 1, nproc
             IF( ipmask(i) == 1 ) ipsour = ( i - 1 )
           ENDDO
@@ -135,13 +136,13 @@
 
         ! now notify all procs if an error has been found
         !
-        CALL mp_max( ierr )
+        CALL mp_max( ierr, world_comm )
 
         IF( ierr > 0 ) &
           CALL errore(' write_restart_wfc ',' wrong size ngl ', ierr )
 
         IF( ipsour /= ionode_id ) THEN
-          CALL mp_get( igwx, igwx, mpime, ionode_id, ipsour, 1 )
+          CALL mp_get( igwx, igwx, mpime, ionode_id, ipsour, 1, world_comm )
         ENDIF
 
         IF(ionode) THEN
@@ -219,7 +220,6 @@
 
     SUBROUTINE write_restart_wfc2(iuni, nbnd)
       USE io_global, ONLY: ionode, ionode_id
-      USE mp, ONLY: mp_bcast
       IMPLICIT NONE
       INTEGER, INTENT(in) :: iuni, nbnd
       LOGICAL :: twrite = .false.
@@ -274,8 +274,10 @@ PROGRAM pw_export
   USE io_files,  ONLY : prefix, tmp_dir, outdir
   USE ions_base, ONLY : ntype => nsp
   USE iotk_module
-  USE mp_global, ONLY : mp_startup, mpime, kunit
-  USE mp, ONLY: mp_bcast
+  USE mp_global, ONLY : mp_startup
+  USE mp_pools,  ONLY : kunit
+  USE mp_world,  ONLY: world_comm
+  USE mp,        ONLY: mp_bcast
   USE environment,   ONLY : environment_start
   !
   IMPLICIT NONE
@@ -332,16 +334,16 @@ PROGRAM pw_export
   ! ... Broadcasting variables
   !
   tmp_dir = trimcheck( outdir )
-  CALL mp_bcast( outdir, ionode_id )
-  CALL mp_bcast( tmp_dir, ionode_id )
-  CALL mp_bcast( prefix, ionode_id )
-  CALL mp_bcast( pp_file, ionode_id )
-  CALL mp_bcast( uspp_spsi, ionode_id )
-  CALL mp_bcast( ascii, ionode_id )
-  CALL mp_bcast( single_file, ionode_id )
-  CALL mp_bcast( raw, ionode_id )
-  CALL mp_bcast( pseudo_dir, ionode_id )
-  CALL mp_bcast( psfile, ionode_id )
+  CALL mp_bcast( outdir, ionode_id, world_comm )
+  CALL mp_bcast( tmp_dir, ionode_id, world_comm )
+  CALL mp_bcast( prefix, ionode_id, world_comm )
+  CALL mp_bcast( pp_file, ionode_id, world_comm )
+  CALL mp_bcast( uspp_spsi, ionode_id, world_comm )
+  CALL mp_bcast( ascii, ionode_id, world_comm )
+  CALL mp_bcast( single_file, ionode_id, world_comm )
+  CALL mp_bcast( raw, ionode_id, world_comm )
+  CALL mp_bcast( pseudo_dir, ionode_id, world_comm )
+  CALL mp_bcast( psfile, ionode_id, world_comm )
 
 
   !
@@ -387,9 +389,10 @@ SUBROUTINE write_export (pp_file,kunit,uspp_spsi, ascii, single_file, raw)
   USE io_base_export, ONLY : write_restart_wfc
   USE io_global,      ONLY : ionode, stdout
   USE ions_base,      ONLY : atm, nat, ityp, tau, nsp
-  USE mp_global,      ONLY : nproc, nproc_pool, mpime
-  USE mp_global,      ONLY : my_pool_id, intra_pool_comm, inter_pool_comm
+  USE mp_pools,       ONLY : my_pool_id, intra_pool_comm, inter_pool_comm, &
+                             nproc_pool
   USE mp,             ONLY : mp_sum, mp_max
+  USE mp_world,       ONLY : world_comm, nproc
 
   IMPLICIT NONE
 
@@ -419,6 +422,8 @@ SUBROUTINE write_export (pp_file,kunit,uspp_spsi, ascii, single_file, raw)
   LOGICAL :: twf0, twfm
   CHARACTER(iotk_attlenx) :: attr
   COMPLEX(DP), ALLOCATABLE :: sevc (:,:)
+
+  REAL(DP), ALLOCATABLE :: raux(:)
 
   IF( nkstot > 0 ) THEN
 
@@ -518,11 +523,11 @@ SUBROUTINE write_export (pp_file,kunit,uspp_spsi, ascii, single_file, raw)
   ALLOCATE( ngk_g( nkstot ) )
   ngk_g = 0
   ngk_g( iks:ike ) = ngk( 1:nks )
-  CALL mp_sum( ngk_g )
+  CALL mp_sum( ngk_g, world_comm )
 
   ! compute the Maximum G vector index among all G+k and processors
   npw_g = maxval( igk_l2g(:,:) )
-  CALL mp_max( npw_g )
+  CALL mp_max( npw_g, world_comm )
 
   ! compute the Maximum number of G vector among all k points
   npwx_g = maxval( ngk_g( 1:nkstot ) )
@@ -701,7 +706,7 @@ SUBROUTINE write_export (pp_file,kunit,uspp_spsi, ascii, single_file, raw)
       ENDDO
     ENDIF
     !
-    CALL mp_sum( itmp1 )
+    CALL mp_sum( itmp1, world_comm )
     !
     ngg = 0
     DO  ig = 1, npw_g
@@ -737,7 +742,9 @@ SUBROUTINE write_export (pp_file,kunit,uspp_spsi, ascii, single_file, raw)
 #ifdef __MPI
   CALL poolrecover (et, nbnd, nkstot, nks)
 #endif
-
+!
+  ALLOCATE(raux(1:nbnd))
+!
 
   WRITE(0,*) "Writing band structure"
 
@@ -760,13 +767,22 @@ SUBROUTINE write_export (pp_file,kunit,uspp_spsi, ascii, single_file, raw)
     CALL iotk_write_attr (attr,"nbnd",nbnd)
     CALL iotk_write_begin(50,"OCCUPATIONS",attr=attr)
     DO ik=1,nkstot
-      CALL iotk_write_dat(50,"wg"//iotk_index(ik),wg(1:nbnd,ik))
+      IF ( wk(ik) == 0.D0 ) THEN
+        !
+        raux = wg(:,ik)
+        !
+      ELSE
+        !
+        raux = wg(:,ik) / wk(ik)
+        !
+      END IF
+      CALL iotk_write_dat(50,"wg"//iotk_index(ik),raux(1:nbnd))
     ENDDO
     CALL iotk_write_end  (50,"OCCUPATIONS")
   ENDIF
-
-
-
+  !
+  DEALLOCATE(raux)
+  !
   wfc_scal = 1.0d0
   twf0 = .true.
   twfm = .false.

@@ -12,6 +12,7 @@ basic_algebra_routines.o \
 becmod.o \
 bfgs_module.o \
 bspline.o \
+bz_form.o \
 cell_base.o  \
 check_stop.o  \
 clocks.o \
@@ -64,6 +65,7 @@ plugin_flags.o \
 plugin_arguments.o \
 pseudo_types.o \
 ptoolkit.o \
+qmmm.o \
 radial_grids.o \
 random_numbers.o \
 read_input.o \
@@ -93,6 +95,7 @@ wave_base.o \
 wavefunctions.o \
 write_upf_v2.o \
 xc_vdW_DF.o \
+xc_rVV10.o \
 xml_input.o \
 xml_io_base.o \
 zhpev_drv.o \

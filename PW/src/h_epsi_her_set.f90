@@ -17,6 +17,7 @@ subroutine h_epsi_her_set(pdir, e_field)
   ! spin polarized systems supported only with fixed occupations
 
   USE noncollin_module,     ONLY : noncolin, npol
+  USE spin_orb, ONLY: lspinorb
   USE kinds,    ONLY : DP
   USE us
   USE wvfct,    ONLY : igk, g2kin, npwx, npw, nbnd, ecutwfc
@@ -37,8 +38,9 @@ subroutine h_epsi_her_set(pdir, e_field)
   USE constants, ONLY : e2, pi, tpi, fpi
   USE fixed_occ
   USE mp,        ONLY : mp_sum
-  USE mp_global, ONLY : intra_bgrp_comm
-  USE becmod,    ONLY : calbec
+  USE mp_bands,  ONLY : intra_bgrp_comm
+  USE mp_world,  ONLY : world_comm
+  USE becmod,    ONLY : bec_type, becp, calbec,allocate_bec_type, deallocate_bec_type
   !
   implicit none
   !
@@ -48,7 +50,7 @@ subroutine h_epsi_her_set(pdir, e_field)
   !  --- Internal definitions ---
 
    COMPLEX(DP), ALLOCATABLE  :: evct(:,:)!for temporary wavefunctios
-   INTEGER :: i
+   INTEGER :: i,ipol
    INTEGER :: igk1(npwx)
    INTEGER :: igk0(npwx)
    INTEGER :: ig
@@ -100,8 +102,7 @@ subroutine h_epsi_her_set(pdir, e_field)
    ! Also for noncollinear calculation
    COMPLEX(DP), ALLOCATABLE :: aux_2(:)
    COMPLEX(DP), ALLOCATABLE :: aux0_2(:)
-   COMPLEX(dp) :: becp0(nkb,nbnd)
-   COMPLEX(dp) :: becp_bp(nkb,nbnd)
+  
    COMPLEX(dp) :: cdet(2)
    COMPLEX(dp) :: cdwork(nbnd)
    COMPLEX(dp) :: mat(nbnd,nbnd)
@@ -113,7 +114,7 @@ subroutine h_epsi_her_set(pdir, e_field)
 
    
    COMPLEX(dp) :: sca,sca1
-   COMPLEX(dp) :: ps(nkb,nbnd)
+   COMPLEX(dp) :: ps(nkb,nbnd*npol)
    COMPLEX(dp) :: matbig(nks,nbnd,nbnd)
    INTEGER :: mdone(nks)
    INTEGER :: ijkb0,  ibnd,jh, ih, ikb, ik
@@ -121,11 +122,23 @@ subroutine h_epsi_her_set(pdir, e_field)
 
    LOGICAL, ALLOCATABLE :: l_cal(:) ! flag for empty/occupied states
    INTEGER, ALLOCATABLE  :: map_g(:)
+   TYPE(bec_type) :: becp_bp,becp0
+     
 
    REAL(dp) :: dkfact
    LOGICAL  :: l_para! if true new parallel treatment
    COMPLEX(kind=DP), ALLOCATABLE :: aux_g(:)
    COMPLEX(kind=DP), ALLOCATABLE :: aux_g_2(:) ! non-collinear case
+
+   COMPLEX(DP), ALLOCATABLE :: q_dk_so(:,:,:,:),q_dkp_so(:,:,:,:)
+
+   if(okvan) then
+      CALL allocate_bec_type (nkb,nbnd,becp0)
+     CALL allocate_bec_type (nkb,nbnd,becp_bp)
+     IF (lspinorb) ALLOCATE(q_dk_so(nhm,nhm,4,ntyp))
+     IF (lspinorb) ALLOCATE(q_dkp_so(nhm,nhm,4,ntyp))
+  endif
+
    !  --- Define a small number ---
    eps=0.000001d0
 
@@ -206,7 +219,11 @@ subroutine h_epsi_her_set(pdir, e_field)
          IF ( nspin == 2 .AND. tfixed_occ) THEN
             l_cal(nb) = ( f_inp(nb,is) /= 0.0_dp )
          ELSE
-            l_cal(nb) = ( nb <= NINT ( nelec/2.0_dp ) )
+            IF (noncolin) THEN
+                l_cal(nb) = ( nb <= NINT ( nelec) )
+             ELSE
+                l_cal(nb) = ( nb <= NINT ( nelec/2.0_dp ) )
+             END IF
          ENDIF
       END DO
 
@@ -278,7 +295,7 @@ subroutine h_epsi_her_set(pdir, e_field)
                ENDDO
             endif
          ENDDO
-         
+         IF (lspinorb) CALL transform_qq_so(q_dk,q_dk_so)
 !  --- Calculate the q-space real spherical harmonics at -dk [Y_LM] --- 
          dkmod=dkm(1)**2+dkm(2)**2+dkm(3)**2
          CALL ylmr2(lmaxq*lmaxq, 1, dkm, dkmod, ylm_dk)
@@ -297,6 +314,7 @@ subroutine h_epsi_her_set(pdir, e_field)
                ENDDO
             endif
          ENDDO
+         IF (lspinorb) CALL transform_qq_so(q_dkp,q_dkp_so)
       
       endif
 
@@ -370,7 +388,7 @@ subroutine h_epsi_her_set(pdir, e_field)
 
                   DO ig=1,npw0
                      aux(igk0(ig))=evct(ig,mb)
-                     IF (noncolin) aux(igk0(ig))=evct(ig+npwx,mb)
+                     IF (noncolin) aux_2(igk0(ig))=evct(ig+npwx,mb)
                   END DO
                    
                   mat(nb,mb) = zdotc(ngm,aux0,1,aux,1)
@@ -396,10 +414,26 @@ subroutine h_epsi_her_set(pdir, e_field)
                         np = ityp(na)
                         nhjkbm = nh(np)
                         jkb1 = jkb - nhjkb
-                        DO j = 1,nhjkbm
-                           pref = pref+CONJG(becp_bp(jkb,nb))*becp0(jkb1+j,mb) &
-                     &        *q_dkp(nhjkb,j,np)*CONJG(struc(na))
-                        ENDDO
+                        if(lspinorb) THEN
+                           DO j = 1,nhjkbm
+                              pref = pref+CONJG(becp_bp%nc(jkb,1,nb))* becp0%nc(jkb1+j,1,mb)  &
+                                   *q_dkp_so(nhjkb,j,1,np)*CONJG(struc(na))   
+                              pref= pref+CONJG(becp_bp%nc(jkb,1,nb))* becp0%nc(jkb1+j,2,mb)  &
+                                   *q_dkp_so(nhjkb,j,2,np)*CONJG(struc(na)) 
+                              pref= pref +CONJG(becp_bp%nc(jkb,2,nb))* becp0%nc(jkb1+j,1,mb)  &
+                                   *q_dkp_so(nhjkb,j,3,np)*CONJG(struc(na)) 
+                              pref= pref +CONJG(becp_bp%nc(jkb,2,nb))* becp0%nc(jkb1+j,2,mb)   &
+                                   *q_dkp_so(nhjkb,j,4,np)*CONJG(struc(na))
+
+                           ENDDO
+
+                        ELSE
+                           DO j = 1,nhjkbm
+                              pref = pref+CONJG(becp_bp%k(jkb,nb))*becp0%k(jkb1+j,mb) &
+                                   &        *q_dkp(nhjkb,j,np)*CONJG(struc(na))
+                           ENDDO
+
+                        END IF
                      ENDDO
                      mat(nb,mb) = mat(nb,mb) + pref
                   endif
@@ -458,8 +492,20 @@ subroutine h_epsi_her_set(pdir, e_field)
                            jkb = ijkb0 + jh
                            do ih = 1, nh (nt)
                               ikb = ijkb0 + ih
-                              ps (ikb, ibnd) = ps (ikb, ibnd) + &
-                                q_dkp(ih,jh,ityp(na))*CONJG(struc(na))* becp0(jkb,ibnd)
+                              if(lspinorb) then
+                                   ps (ikb, (ibnd-1)*npol+1) = ps (ikb,(ibnd-1)*npol+1 ) + &
+                                      q_dkp_so(ih,jh,1,ityp(na))*CONJG(struc(na))* becp0%nc(jkb,1,ibnd)
+                                   ps (ikb, (ibnd-1)*npol+1) = ps (ikb,(ibnd-1)*npol+1 ) + &
+                                        q_dkp_so(ih,jh,2,ityp(na))*CONJG(struc(na))* becp0%nc(jkb,2,ibnd)
+                                   ps (ikb, (ibnd-1)*npol+2) = ps (ikb,(ibnd-1)*npol+2 ) + &
+                                        q_dkp_so(ih,jh,3,ityp(na))*CONJG(struc(na))* becp0%nc(jkb,1,ibnd)
+                                   ps (ikb, (ibnd-1)*npol+2) = ps (ikb,(ibnd-1)*npol+2 ) + &
+                                        q_dkp_so(ih,jh,4,ityp(na))*CONJG(struc(na))* becp0%nc(jkb,2,ibnd)
+
+                              else
+                                 ps (ikb, ibnd) = ps (ikb, ibnd) + &
+                                      q_dkp(ih,jh,ityp(na))*CONJG(struc(na))* becp0%k(jkb,ibnd)
+                              endif
                            enddo
                         enddo
                      enddo
@@ -468,13 +514,16 @@ subroutine h_epsi_her_set(pdir, e_field)
                enddo
             enddo
 
-            call ZGEMM ('N', 'N', npw1, nbnd , nkb, (1.d0, 0.d0) , vkb, &!vkb is relative to the last ik read
+            call ZGEMM ('N', 'N', npw1, nbnd*npol , nkb, (1.d0, 0.d0) , vkb, &!vkb is relative to the last ik read
                  npwx, ps, nkb, (1.d0, 0.d0) , evct, npwx)
             do m=1,nbnd
                do nb=1,nbnd
                   do ig=1,npw1
                      evcm(ig,m,pdir)=evcm(ig,m,pdir) + mat(nb,m)*evct(ig,nb)
                   enddo
+                  if(noncolin) then
+                     evcm(ig+npwx,m,pdir)=evcm(ig+npwx,m,pdir) + mat(nb,m)*evct(ig+npwx,nb)
+                  endif
                enddo
             enddo
          endif
@@ -584,8 +633,8 @@ subroutine h_epsi_her_set(pdir, e_field)
                   aux_g(mapgp_global(ig_l2g(igk0(ig)),pdir))=evct(ig,mb)
                   IF (noncolin) aux_g_2(mapgp_global(ig_l2g(igk0(ig)),pdir))=evct(ig+npwx,mb)
                 enddo
-                call mp_sum(aux_g(:))
-                IF (noncolin) call mp_sum(aux_g_2(:))
+                call mp_sum(aux_g(:),world_comm)
+                IF (noncolin) call mp_sum(aux_g_2(:),world_comm)
               END IF
 
          DO nb=1,nbnd
@@ -645,9 +694,21 @@ subroutine h_epsi_her_set(pdir, e_field)
                         nhjkbm = nh(np)
                         jkb1 = jkb - nhjkb
                         DO j = 1,nhjkbm
-                           pref = pref+CONJG(becp_bp(jkb,nb))*becp0(jkb1+j,mb) &
-                             *q_dkp(nhjkb,j,np)*CONJG(struc(na))
-                        ENDDO
+                           if(lspinorb) then
+                                pref = pref+CONJG(becp_bp%nc(jkb,1,nb))*becp0%nc(jkb1+j,1,mb) &
+                                     *q_dkp_so(nhjkb,j,1,np)*CONJG(struc(na))
+                                pref = pref+CONJG(becp_bp%nc(jkb,1,nb))*becp0%nc(jkb1+j,2,mb) &
+                                     *q_dkp_so(nhjkb,j,2,np)*CONJG(struc(na))
+                                pref = pref+CONJG(becp_bp%nc(jkb,2,nb))*becp0%nc(jkb1+j,1,mb) &
+                                     *q_dkp_so(nhjkb,j,3,np)*CONJG(struc(na))
+                                pref = pref+CONJG(becp_bp%nc(jkb,2,nb))*becp0%nc(jkb1+j,2,mb) &
+                                     *q_dkp_so(nhjkb,j,4,np)*CONJG(struc(na))
+
+                           else
+                              pref = pref+CONJG(becp_bp%k(jkb,nb))*becp0%k(jkb1+j,mb) &
+                                   *q_dkp(nhjkb,j,np)*CONJG(struc(na))
+                           endif
+                           ENDDO
                      ENDDO
                      mat(nb,mb) = mat(nb,mb) + pref
                   endif
@@ -707,8 +768,8 @@ subroutine h_epsi_her_set(pdir, e_field)
                   IF (noncolin) aux_g_2(mapgp_global(ig_l2g(igk0(ig)),pdir))=evct(ig+npwx,nb)
                enddo
 !put evct on global  array
-               call mp_sum(aux_g(:))
-               IF (noncolin) call mp_sum(aux_g_2(:))
+               call mp_sum(aux_g(:),world_comm)
+               IF (noncolin) call mp_sum(aux_g_2(:),world_comm)
                do m=1,nbnd
                   do ig=1,npw1
                      evcm(ig,m,pdir)=evcm(ig,m,pdir)+mat(nb,m)*aux_g(ig_l2g(igk1(ig)))
@@ -732,8 +793,19 @@ subroutine h_epsi_her_set(pdir, e_field)
                            jkb = ijkb0 + jh
                            do ih = 1, nh (nt)
                               ikb = ijkb0 + ih
-                              ps (ikb, ibnd) = ps (ikb, ibnd) + &
-                                q_dkp(ih,jh,ityp(na))*CONJG(struc(na))* becp0(jkb,ibnd)
+                              if(lspinorb) then
+                                 ps (ikb, (ibnd-1)*npol+1) = ps (ikb,(ibnd-1)*npol+1 ) + &
+                                      q_dkp_so(ih,jh,1,ityp(na))*CONJG(struc(na))* becp0%nc(jkb,1,ibnd)
+                                 ps (ikb, (ibnd-1)*npol+1) = ps (ikb,(ibnd-1)*npol+1 ) + &
+                                      q_dkp_so(ih,jh,2,ityp(na))*CONJG(struc(na))* becp0%nc(jkb,2,ibnd)
+                                 ps (ikb, (ibnd-1)*npol+2) = ps (ikb,(ibnd-1)*npol+2 ) + &
+                                      q_dkp_so(ih,jh,3,ityp(na))*CONJG(struc(na))* becp0%nc(jkb,1,ibnd)
+                                 ps (ikb, (ibnd-1)*npol+2) = ps (ikb,(ibnd-1)*npol+2 ) + &
+                                        q_dkp_so(ih,jh,4,ityp(na))*CONJG(struc(na))* becp0%nc(jkb,2,ibnd)
+                              else
+                                 ps (ikb, ibnd) = ps (ikb, ibnd) + &
+                                      q_dkp(ih,jh,ityp(na))*CONJG(struc(na))* becp0%k(jkb,ibnd)
+                              endif
                            enddo
                         enddo
                      enddo
@@ -742,13 +814,16 @@ subroutine h_epsi_her_set(pdir, e_field)
                enddo
             enddo
             
-            call ZGEMM ('N', 'N', npw1, nbnd , nkb, (1.d0, 0.d0) , vkb, &!vkb is relative to the last ik read
+            call ZGEMM ('N', 'N', npw1, nbnd*npol , nkb, (1.d0, 0.d0) , vkb, &!vkb is relative to the last ik read
                  npwx, ps, nkb, (1.d0, 0.d0) , evct, npwx)
             do m=1,nbnd
                do nb=1,nbnd
                   do ig=1,npw1
                      evcm(ig,m,pdir)=evcm(ig,m,pdir) + mat(nb,m)*evct(ig,nb)
                   enddo
+                  if(noncolin) then
+                     evcm(ig+npwx,m,pdir)=evcm(ig+npwx,m,pdir) + mat(nb,m)*evct(ig+npwx,nb)
+                  endif
                enddo
             enddo
          endif
@@ -840,8 +915,21 @@ subroutine h_epsi_her_set(pdir, e_field)
                      nhjkbm = nh(np)
                      jkb1 = jkb - nhjkb
                      DO j = 1,nhjkbm
-                        pref = pref+CONJG(becp_bp(jkb,nb))*becp0(jkb1+j,mb) &
-                             *q_dk(nhjkb,j,np)*struc(na)
+                        if(lspinorb) then
+                            pref = pref+CONJG(becp_bp%nc(jkb,1,nb))*becp0%nc(jkb1+j,1,mb) &
+                                 *q_dk_so(nhjkb,j,1,np)*struc(na)
+                            pref = pref+CONJG(becp_bp%nc(jkb,1,nb))*becp0%nc(jkb1+j,2,mb) &
+                                 *q_dk_so(nhjkb,j,2,np)*struc(na)
+                            pref = pref+CONJG(becp_bp%nc(jkb,2,nb))*becp0%nc(jkb1+j,1,mb) &
+                                 *q_dk_so(nhjkb,j,3,np)*struc(na)
+                            pref = pref+CONJG(becp_bp%nc(jkb,2,nb))*becp0%nc(jkb1+j,2,mb) &
+                                 *q_dk_so(nhjkb,j,4,np)*struc(na)
+
+
+                        else
+                           pref = pref+CONJG(becp_bp%k(jkb,nb))*becp0%k(jkb1+j,mb) &
+                                *q_dk(nhjkb,j,np)*struc(na)
+                        endif
                      ENDDO
                   ENDDO
                   mat(nb,mb) = mat(nb,mb) + pref
@@ -897,8 +985,20 @@ subroutine h_epsi_her_set(pdir, e_field)
                         jkb = ijkb0 + jh
                         do ih = 1, nh (nt)
                            ikb = ijkb0 + ih
-                           ps (ikb, ibnd) = ps (ikb, ibnd) + &
-                                q_dk(ih,jh,ityp(na))*struc(na)* becp0(jkb,ibnd)
+                           if(noncolin) then
+                              ps (ikb, (ibnd-1)*npol+1) = ps (ikb,(ibnd-1)*npol+1 ) + &
+                                   q_dk_so(ih,jh,1,ityp(na))*struc(na)* becp0%nc(jkb,1,ibnd)
+                              ps (ikb, (ibnd-1)*npol+1) = ps (ikb,(ibnd-1)*npol+1 ) + &
+                                   q_dk_so(ih,jh,2,ityp(na))*struc(na)* becp0%nc(jkb,2,ibnd)
+                              ps (ikb, (ibnd-1)*npol+2) = ps (ikb,(ibnd-1)*npol+2 ) + &
+                                   q_dk_so(ih,jh,3,ityp(na))*struc(na)* becp0%nc(jkb,1,ibnd)
+                              ps (ikb, (ibnd-1)*npol+2) = ps (ikb,(ibnd-1)*npol+2 ) + &
+                                   q_dk_so(ih,jh,4,ityp(na))*struc(na)* becp0%nc(jkb,2,ibnd)
+
+                           else
+                              ps (ikb, ibnd) = ps (ikb, ibnd) + &
+                                   q_dk(ih,jh,ityp(na))*struc(na)* becp0%k(jkb,ibnd)
+                           endif
                         enddo
                      enddo
                   enddo
@@ -907,13 +1007,16 @@ subroutine h_epsi_her_set(pdir, e_field)
             enddo
          enddo
 
-         call ZGEMM ('N', 'N', npw1, nbnd , nkb, (1.d0, 0.d0) , vkb, &!vkb is relative to the last ik read
+         call ZGEMM ('N', 'N', npw1, nbnd*npol , nkb, (1.d0, 0.d0) , vkb, &!vkb is relative to the last ik read
                  npwx, ps, nkb, (1.d0, 0.d0) , evct, npwx)
          do m=1,nbnd
             do nb=1,nbnd
                do ig=1,npw1
                   evcp(ig,m,pdir)=evcp(ig,m,pdir) + mat(nb,m)*evct(ig,nb)
                enddo
+               if(noncolin) then
+                  evcp(ig+npwx,m,pdir)=evcp(ig+npwx,m,pdir) + mat(nb,m)*evct(ig+npwx,nb)
+               endif
             enddo
          enddo
       endif
@@ -1018,8 +1121,8 @@ subroutine h_epsi_her_set(pdir, e_field)
                      aux_g(mapgm_global(ig_l2g(igk0(ig)),pdir))=evct(ig,mb)
                      IF (noncolin) aux_g_2(mapgm_global(ig_l2g(igk0(ig)),pdir))=evct(ig+npwx,mb)
                   enddo
-                  call mp_sum(aux_g(:))
-                  IF (noncolin) call mp_sum(aux_g_2(:))
+                  call mp_sum(aux_g(:),world_comm)
+                  IF (noncolin) call mp_sum(aux_g_2(:),world_comm)
                end if
 
       DO nb=1,nbnd
@@ -1075,8 +1178,19 @@ subroutine h_epsi_her_set(pdir, e_field)
                      nhjkbm = nh(np)
                      jkb1 = jkb - nhjkb
                      DO j = 1,nhjkbm
-                        pref = pref+CONJG(becp_bp(jkb,nb))*becp0(jkb1+j,mb) &
-                             *q_dk(nhjkb,j,np)*struc(na)
+                        if(lspinorb) then
+                           pref = pref+CONJG(becp_bp%nc(jkb,1,nb))*becp0%nc(jkb1+j,1,mb) &
+                                *q_dk_so(nhjkb,j,1,np)*struc(na)
+                           pref = pref+CONJG(becp_bp%nc(jkb,1,nb))*becp0%nc(jkb1+j,2,mb) &
+                                *q_dk_so(nhjkb,j,2,np)*struc(na)
+                           pref = pref+CONJG(becp_bp%nc(jkb,2,nb))*becp0%nc(jkb1+j,1,mb) &
+                                *q_dk_so(nhjkb,j,3,np)*struc(na)
+                           pref = pref+CONJG(becp_bp%nc(jkb,2,nb))*becp0%nc(jkb1+j,2,mb) &
+                                *q_dk_so(nhjkb,j,4,np)*struc(na)
+                        else
+                           pref = pref+CONJG(becp_bp%k(jkb,nb))*becp0%k(jkb1+j,mb) &
+                                *q_dk(nhjkb,j,np)*struc(na)
+                        endif
                      ENDDO
                   ENDDO
                   mat(nb,mb) = mat(nb,mb) + pref
@@ -1136,8 +1250,8 @@ subroutine h_epsi_her_set(pdir, e_field)
                IF (noncolin) aux_g_2(mapgm_global(ig_l2g(igk0(ig)),pdir))=evct(ig+npwx,nb)
             enddo
 !put evct on global  array
-            call mp_sum(aux_g(:))
-            IF (noncolin) call mp_sum(aux_g_2(:))
+            call mp_sum(aux_g(:),world_comm)
+            IF (noncolin) call mp_sum(aux_g_2(:),world_comm)
             do m=1,nbnd
                do ig=1,npw1
                   evcp(ig,m,pdir)=evcp(ig,m,pdir)+mat(nb,m)*aux_g(ig_l2g(igk1(ig)))
@@ -1162,8 +1276,20 @@ subroutine h_epsi_her_set(pdir, e_field)
                         jkb = ijkb0 + jh
                         do ih = 1, nh (nt)
                            ikb = ijkb0 + ih
-                           ps (ikb, ibnd) = ps (ikb, ibnd) + &
-                                q_dk(ih,jh,ityp(na))*struc(na)* becp0(jkb,ibnd)
+                           if(lspinorb) then
+                              ps (ikb, (ibnd-1)*npol+1) = ps (ikb,(ibnd-1)*npol+1 ) + &
+                                   q_dk_so(ih,jh,1,ityp(na))*struc(na)* becp0%nc(jkb,1,ibnd)
+                              ps (ikb, (ibnd-1)*npol+1) = ps (ikb,(ibnd-1)*npol+1 ) + &
+                                   q_dk_so(ih,jh,2,ityp(na))*struc(na)* becp0%nc(jkb,2,ibnd)
+                              ps (ikb, (ibnd-1)*npol+2) = ps (ikb,(ibnd-1)*npol+2 ) + &
+                                   q_dk_so(ih,jh,3,ityp(na))*struc(na)* becp0%nc(jkb,1,ibnd)
+                              ps (ikb, (ibnd-1)*npol+2) = ps (ikb,(ibnd-1)*npol+2 ) + &
+                                   q_dk_so(ih,jh,4,ityp(na))*struc(na)* becp0%nc(jkb,2,ibnd)
+
+                           else
+                              ps (ikb, ibnd) = ps (ikb, ibnd) + &
+                                   q_dk(ih,jh,ityp(na))*struc(na)* becp0%k(jkb,ibnd)
+                           endif
                         enddo
                      enddo
                   enddo
@@ -1172,12 +1298,15 @@ subroutine h_epsi_her_set(pdir, e_field)
             enddo
          enddo
 
-         call ZGEMM ('N', 'N', npw1, nbnd , nkb, (1.d0, 0.d0) , vkb, &!vkb is relative to the ik read
+         call ZGEMM ('N', 'N', npw1, nbnd*npol , nkb, (1.d0, 0.d0) , vkb, &!vkb is relative to the ik read
                  npwx, ps, nkb, (1.d0, 0.d0) , evct, npwx)
          do m=1,nbnd
             do nb=1,nbnd
                do ig=1,npw1
                   evcp(ig,m,pdir)=evcp(ig,m,pdir) + mat(nb,m)*evct(ig,nb)
+                  if(noncolin) then
+                     evcp(ig+npwx,m,pdir)=evcp(ig+npwx,m,pdir) + mat(nb,m)*evct(ig+npwx,nb)
+                  endif
                enddo
             enddo
          enddo
@@ -1201,8 +1330,10 @@ subroutine h_epsi_her_set(pdir, e_field)
   DEALLOCATE(aux,aux0)
   IF (ALLOCATED(aux_2)) DEALLOCATE(aux_2)
   IF (ALLOCATED(aux0_2)) DEALLOCATE(aux0_2)
-
-  
+  if(okvan)CALL deallocate_bec_type (becp0)
+  if(okvan)CALL deallocate_bec_type (becp_bp)
+  if(okvan.and.lspinorb) deallocate(q_dk_so)
+  if(okvan.and.lspinorb) deallocate(q_dkp_so)
 !  --
 !------------------------------------------------------------------------------!
    return

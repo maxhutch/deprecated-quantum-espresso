@@ -230,6 +230,7 @@
     USE io_files,             ONLY : prefix
     USE io_global,            ONLY : stdout, ionode, ionode_id
     USE mp,                   ONLY : mp_barrier, mp_bcast
+    USE mp_world,             ONLY : world_comm
 
     implicit none
     INTEGER, EXTERNAL :: find_free_unit
@@ -263,11 +264,11 @@
        read(iung) pw%numpw
        read(iung) pw%factor
     endif
-    call mp_bcast(pw%label,ionode_id)
-    call mp_bcast(pw%ontime,ionode_id)
-    call mp_bcast(pw%time,ionode_id)
-    call mp_bcast(pw%numpw,ionode_id)
-    call mp_bcast(pw%factor,ionode_id)
+    call mp_bcast(pw%label,ionode_id,world_comm)
+    call mp_bcast(pw%ontime,ionode_id,world_comm)
+    call mp_bcast(pw%time,ionode_id,world_comm)
+    call mp_bcast(pw%numpw,ionode_id,world_comm)
+    call mp_bcast(pw%factor,ionode_id,world_comm)
  
     allocate(pw%pw(pw%numpw,pw%numpw))
     if(ionode) then
@@ -293,8 +294,8 @@
        endif
     endif
     do iw=1,pw%numpw
-       call mp_barrier
-       call mp_bcast(pw%pw(:,iw),ionode_id)
+       call mp_barrier( world_comm )
+       call mp_bcast(pw%pw(:,iw),ionode_id,world_comm)
     enddo
 
     return
@@ -915,7 +916,7 @@
 
     USE io_global, ONLY : stdout
     USE basic_structures, ONLY : ortho_polaw, free_memory
-    USE mp_global,            ONLY : nproc,mpime
+    USE mp_world,         ONLY : nproc,mpime
     
     implicit none
 
@@ -951,7 +952,7 @@
 
     USE io_global, ONLY : stdout
     USE basic_structures, ONLY : ortho_polaw, free_memory
-    USE mp_global,            ONLY : nproc,mpime,world_comm!group
+    USE mp_world,         ONLY : nproc,mpime,world_comm!group
     USE parallel_include
 
     implicit none
@@ -1180,7 +1181,7 @@
 
     USE io_global, ONLY : stdout
     USE basic_structures, ONLY : v_pot, ortho_polaw
-    USE mp_global,  ONLY : mpime, nproc
+    USE mp_world,  ONLY : mpime, nproc, world_comm
     USE mp,         ONLY : mp_sum
 
 
@@ -1208,7 +1209,7 @@
              enddo
           endif
        enddo
-       call mp_sum(mat(iw,:))
+       call mp_sum(mat(iw,:),world_comm)
     enddo
 
     vp%vmat(:,:)=0.d0
@@ -1220,7 +1221,7 @@
              enddo
           endif
        enddo
-       call mp_sum(vp%vmat(iw,:))
+       call mp_sum(vp%vmat(iw,:),world_comm)
     enddo
 
 
@@ -1249,30 +1250,21 @@
     INTEGER, ALLOCATABLE, DIMENSION(:) :: ipiv
     REAL(kind=DP), ALLOCATABLE, DIMENSION(:) :: work
 
-!call hangup ! debug
-
     call free_memory(vpi)
-
-!call hangup ! debug
 
     lwork=vp%numpw
     allocate(ipiv(vp%numpw))
     allocate(work(lwork))
 
-!call hangup ! debug
-
     vpi%numpw=vp%numpw
     allocate(vpi%vmat( vpi%numpw, vpi%numpw))
 !write(stdout,*) size(vpi%vmat,1), size(vpi%vmat,2), size(vp%vmat,1), size(vp%vmat,2)
-!call hangup ! debug
 !    vpi%vmat(:,:)=vp%vmat(:,:)  ! bug
     do j = 1, size(vpi%vmat,2)
       do i = 1, size(vpi%vmat,1)
         vpi%vmat(i,j)=vp%vmat(i,j)
       end do
     end do
-
-!call hangup ! debug
 
    call dgetrf(vpi%numpw,vpi%numpw,vpi%vmat,vpi%numpw,ipiv,info)
    if(info /= 0) then
@@ -1292,7 +1284,8 @@
 
  SUBROUTINE fake_polarization_io(n)
 !this subroutine just call mp_barrier 2*n+1 times
-   USE mp,      ONLY : mp_barrier
+   USE mp,       ONLY : mp_barrier
+   USE mp_world, ONLY : world_comm
 
    implicit none
 
@@ -1301,7 +1294,7 @@
 !we take advantage of the t ==> -t symmetry
 !   do i=-n,n
    do i=0,n
-     call mp_barrier
+     call mp_barrier( world_comm )
    enddo
    return
  END SUBROUTINE fake_polarization_io
@@ -1313,7 +1306,7 @@
 
     USE io_global, ONLY : stdout
     USE basic_structures, ONLY : v_pot, ortho_polaw
-    USE mp_global,  ONLY : mpime, nproc
+    USE mp_world,  ONLY : world_comm, mpime, nproc
     USE mp,         ONLY : mp_sum
 
     implicit none
@@ -1340,7 +1333,7 @@
              enddo
           endif
        enddo
-       call mp_sum(mat(iw,:))
+       call mp_sum(mat(iw,:),world_comm)
     enddo
 
     vp%vmat(:,:)=0.d0
@@ -1352,7 +1345,7 @@
              enddo
           endif
        enddo
-       call mp_sum(vp%vmat(iw,:))
+       call mp_sum(vp%vmat(iw,:),world_comm)
     enddo
 
 
@@ -1505,7 +1498,7 @@
 
     USE io_global, ONLY : stdout
     USE basic_structures, ONLY : v_pot, free_memory
-    USE mp_global,            ONLY : nproc,mpime
+    USE mp_world,         ONLY : nproc,mpime
 
     implicit none
 
@@ -1541,7 +1534,7 @@
 
     USE io_global, ONLY : stdout
     USE basic_structures, ONLY : v_pot, free_memory
-    USE mp_global,            ONLY : nproc,mpime,world_comm!group
+    USE mp_world,         ONLY : nproc,mpime,world_comm!group
     USE parallel_include
 
     implicit none
@@ -1844,7 +1837,7 @@
    USE basic_structures, ONLY : wannier_u, cprim_prod, free_memory, &
                               &initialize_memory_cprim_prod
    USE times_gw,  ONLY : times_freqs
-   USE mp_global,            ONLY : nproc,mpime
+   USE mp_world,   ONLY : world_comm, nproc,mpime
    USE io_global,  ONLY : stdout
    USE mp, ONLY : mp_barrier
 
@@ -1890,7 +1883,7 @@
              do ic=uu%nums_occ(1)+1,uu%nums
                 exp_table(ic-uu%nums_occ(1))=exp((uu%ene(iv,1)-uu%ene(ic,1))*tf%times(it))
              enddo
-             call mp_barrier
+             call mp_barrier( world_comm )
              call initialize_memory_cprim_prod(cpp)
 
    !!read in Svci 
@@ -1941,7 +1934,7 @@
           else
 !just parallelel reading of file
              do iv=1,uu%nums_occ(1)
-                call mp_barrier
+                call mp_barrier( world_comm )
                 call initialize_memory_cprim_prod(cpp)
                 cpp%cprim=iv
                 call read_data_pw_cprim_prod(cpp, prefix, .true., ok_read, .true.,.false.)
@@ -2197,8 +2190,8 @@
 
    USE basic_structures, ONLY : wannier_u, cprim_prod, free_memory, &
                               &initialize_memory, upper_states
-   USE times_gw,  ONLY : times_freqs
-   USE mp_global,            ONLY : nproc,mpime
+   USE times_gw,   ONLY : times_freqs
+   USE mp_world,   ONLY : nproc,mpime
    USE io_global,  ONLY : stdout
 
    implicit none

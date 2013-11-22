@@ -25,7 +25,8 @@ subroutine self_basis_lanczos(n_set,nstates,numpw, nsteps,ispin,lfull,nfull)
    USE wvfct,    ONLY : igk, g2kin, npwx, npw, nbnd, nbndx, ecutwfc
    USE wavefunctions_module, ONLY : evc, psic
    USE mp, ONLY : mp_sum, mp_barrier, mp_bcast
-   USE mp_global, ONLY : mpime,nproc, intra_pool_comm
+   USE mp_world, ONLY : world_comm, mpime, nproc
+   USE mp_pools, ONLY : intra_pool_comm
    USE gvecs,              ONLY : nls, nlsm, doublegrid
    !USE exx, ONLY : exx_divergence_new, yukawa
    USE fft_custom_gwl
@@ -324,7 +325,7 @@ subroutine self_basis_lanczos(n_set,nstates,numpw, nsteps,ispin,lfull,nfull)
                   enddo
                enddo
             endif
-            call mp_sum(fumat)
+            call mp_sum(fumat,world_comm)
             call DGEMM('N','N',2*fc%npwt,numpw,nfull,-1.d0,evc_t,2*fc%npwt,fumat,nfull,1.d0,wp_prod(1,1,iv-ivv+1),2*fc%npwt)
 
             deallocate(fumat)
@@ -346,7 +347,7 @@ subroutine self_basis_lanczos(n_set,nstates,numpw, nsteps,ispin,lfull,nfull)
             enddo
          endif
          do ii=1,numpw-offset
-            call mp_sum(omat(1:numpw-offset,ii))
+            call mp_sum(omat(1:numpw-offset,ii),world_comm)
          enddo
 
          if(iv-ivv==mpime) then
@@ -458,8 +459,8 @@ subroutine self_basis_lanczos(n_set,nstates,numpw, nsteps,ispin,lfull,nfull)
            t_mat(:,:)=t_mat_hold(:,:)
            eigen(1:nstates)=t_eigen_hold(1:nstates)
         endif
-        call mp_bcast(t_mat,iv-ivv)
-        call mp_bcast(eigen(1:nstates),iv-ivv)
+        call mp_bcast(t_mat,iv-ivv,world_comm)
+        call mp_bcast(eigen(1:nstates),iv-ivv,world_comm)
         if(ionode) then
            iuntmat = find_free_unit()
            write(nfile,'(4i1)') iv/1000,mod(iv,1000)/100,mod(iv,100)/10,mod(iv,10)
@@ -499,7 +500,7 @@ subroutine self_basis_lanczos(n_set,nstates,numpw, nsteps,ispin,lfull,nfull)
         if(iv-ivv == mpime) then
            t_mat(:,:)=t_mat_hold2(:,:)
         endif
-        call mp_bcast(t_mat,iv-ivv)
+        call mp_bcast(t_mat,iv-ivv,world_comm)
 
         call dgemm('N','N',2*fc%npwt,nstates,numpw,1.d0,wp_prod(1,1,iv-ivv+1),2*fc%npwt,t_mat,numpw,0.d0,wp_g_t,2*fc%npwt)
 
@@ -565,7 +566,7 @@ subroutine global_self_lanczos(nstates,nstates_eff,threshold,nglobal,nsteps,nump
   USE gvect
   USE wvfct,    ONLY : igk, g2kin, npwx, npw, nbnd, nbndx, ecutwfc
   USE mp, ONLY : mp_sum, mp_barrier, mp_bcast
-  USE mp_global, ONLY : mpime,nproc
+  USE mp_world, ONLY : world_comm, mpime,nproc
   USE wavefunctions_module, ONLY : evc, psic
   USE gvect
   USE gvecs,              ONLY : nls, nlsm, doublegrid
@@ -679,7 +680,7 @@ subroutine global_self_lanczos(nstates,nstates_eff,threshold,nglobal,nsteps,nump
         read(iuntmat) s_eigen(1:nstates)
         close(iuntmat)
      endif
-     call mp_bcast(s_eigen, ionode_id)
+     call mp_bcast(s_eigen, ionode_id,world_comm)
   endif
   
 
@@ -770,7 +771,7 @@ subroutine global_self_lanczos(nstates,nstates_eff,threshold,nglobal,nsteps,nump
            read(iuntmat) s_eigen(1:nstates)
            close(iuntmat)
         endif
-        call mp_bcast(s_eigen, ionode_id)
+        call mp_bcast(s_eigen, ionode_id,world_comm)
      endif
 
 
@@ -825,7 +826,7 @@ subroutine global_self_lanczos(nstates,nstates_eff,threshold,nglobal,nsteps,nump
             enddo
          enddo
       endif
-      call mp_sum(o_t_psi(:,:))
+      call mp_sum(o_t_psi(:,:),world_comm)
       offset=(et(num_nbndv(1)+1,1)-et(num_nbndv(1),1))/2.d0
       if(l_verbose) write(stdout,*) 'GREENT 2'
      call flush_unit(stdout)
@@ -867,11 +868,11 @@ subroutine global_self_lanczos(nstates,nstates_eff,threshold,nglobal,nsteps,nump
      call flush_unit(stdout)
      
      do ii=1,nglobal
-        !call mp_bcast(gtrail(:,ii), ionode_id)
-        call mp_sum(gtrail(:,ii))
+        !call mp_bcast(gtrail(:,ii), ionode_id,world_comm)
+        call mp_sum(gtrail(:,ii),world_comm)
      enddo
-     !call mp_bcast(eigen(:), ionode_id)
-     call mp_sum(eigen(:))
+     !call mp_bcast(eigen(:), ionode_id,world_comm)
+     call mp_sum(eigen(:),world_comm)
      
      do ii=1,nglobal
         if(l_verbose) write(stdout,*) 'EIGEN GTRAIL:',ii, eigen(ii)
@@ -970,7 +971,7 @@ endif
            enddo
            close(iuns)
         endif
-        call mp_barrier
+        call mp_barrier( world_comm )
      enddo
 
 
@@ -1036,7 +1037,7 @@ endif
            enddo
         enddo
      endif
-     call mp_sum(t_mat(:,:))
+     call mp_sum(t_mat(:,:),world_comm)
      if(ionode) then
         write(iuntmat) nglobal
         write(iuntmat) nstates_eff
@@ -1072,7 +1073,7 @@ endif
      write(stdout,*) 'TEST3'
      call flush_unit(stdout)
 
-     call mp_sum(t_mat(:,:))
+     call mp_sum(t_mat(:,:),world_comm)
 !!write diagonal terms
      do ii=1,nglobal
         sca=0.d0
@@ -1121,7 +1122,7 @@ endif
                  t_mat(jj,1)=t_mat(jj,1)-dble(conjg(old_basis(1,jj))*wp_prod(1))
               enddo
            endif
-           call mp_sum(t_mat(:,1))
+           call mp_sum(t_mat(:,1),world_comm)
            sca=0.d0
            do ii=1,nglobal
               sca=sca+t_mat(ii,1)**2.d0
@@ -1132,7 +1133,7 @@ endif
               sca1=sca1+2.d0*dble(conjg(wp_prod(ig))*wp_prod(ig))
            enddo
            if(gstart==2) sca1=sca1-dble(conjg(wp_prod(1))*wp_prod(1))
-           call mp_sum(sca1)
+           call mp_sum(sca1,world_comm)
          
            write(stdout,*) 'Projection',iv,iw,sca/sca1,sca1
            proj_tot=proj_tot+sca/sca1
@@ -1174,7 +1175,8 @@ subroutine self_basis_lanczos_real(n_set,nstates,numpw, nsteps,ispin)
    USE wvfct,    ONLY : igk, g2kin, npwx, npw, nbnd, nbndx, ecutwfc
    USE wavefunctions_module, ONLY : evc, psic
    USE mp, ONLY : mp_sum, mp_barrier, mp_bcast
-   USE mp_global, ONLY : mpime,nproc, intra_pool_comm
+   USE mp_world, ONLY : world_comm, mpime, nproc
+   USE mp_pools, ONLY : intra_pool_comm
    USE gvecs,              ONLY : nls, nlsm, doublegrid
    !USE exx, ONLY : exx_divergence_new, yukawa
    USE fft_custom_gwl
@@ -1424,7 +1426,7 @@ subroutine self_basis_lanczos_real(n_set,nstates,numpw, nsteps,ispin)
      &fc%nrxxt,wp_prod(1,offset+1,iv-ivv+1),fc%nrxxt,0.d0,omat,numpw)
          call stop_clock('sl_dgemm')
          do ii=1,numpw-offset
-            call mp_sum(omat(1:numpw-offset,ii))
+            call mp_sum(omat(1:numpw-offset,ii),world_comm)
             omat(1:numpw-offset,ii)=omat(1:numpw-offset,ii)/dble(fc%nr1t*fc%nr2t*fc%nr3t)
          enddo
 
@@ -1538,8 +1540,8 @@ subroutine self_basis_lanczos_real(n_set,nstates,numpw, nsteps,ispin)
            eigen(1:nstates)=t_eigen_hold(1:nstates)
         endif
         call start_clock('sl_mpbcast')
-        call mp_bcast(t_mat,iv-ivv)
-        call mp_bcast(eigen(1:nstates),iv-ivv)
+        call mp_bcast(t_mat,iv-ivv,world_comm)
+        call mp_bcast(eigen(1:nstates),iv-ivv,world_comm)
         call stop_clock('sl_mpbcast')
         if(ionode) then
            iuntmat = find_free_unit()
@@ -1581,7 +1583,7 @@ subroutine self_basis_lanczos_real(n_set,nstates,numpw, nsteps,ispin)
            t_mat(:,:)=t_mat_hold2(:,:)
         endif
         call start_clock('sl_mpbcast')
-        call mp_bcast(t_mat,iv-ivv)
+        call mp_bcast(t_mat,iv-ivv,world_comm)
         call stop_clock('sl_mpbcast')
 
         call start_clock('sl_dgemm')

@@ -48,7 +48,7 @@ SUBROUTINE cdiaghg_compute( n, m, h, s, ldh, e, v )
   !
   USE kinds,            ONLY : DP
   USE mp,               ONLY : mp_bcast, mp_sum, mp_barrier, mp_max
-  USE mp_global,        ONLY : me_bgrp, root_bgrp, intra_bgrp_comm
+  USE mp_bands,         ONLY : me_bgrp, root_bgrp, intra_bgrp_comm
   !
   IMPLICIT NONE
   !
@@ -228,12 +228,12 @@ SUBROUTINE pcdiaghg( n, h, s, ldh, e, v, desc )
   !
   USE kinds,            ONLY : DP
   USE mp,               ONLY : mp_bcast
-  USE mp_global,        ONLY : root_bgrp, intra_bgrp_comm
+  USE mp_bands,         ONLY : root_bgrp, intra_bgrp_comm
   USE zhpev_module,     ONLY : pzhpev_drv, zhpev_drv
   USE descriptors,      ONLY : la_descriptor
   USE parallel_toolkit, ONLY : zsqmdst, zsqmcll
 #if defined __SCALAPACK
-  USE mp_global,        ONLY : ortho_cntx, me_blacs, np_ortho, me_ortho
+  USE mp_diag,          ONLY : ortho_cntx, me_blacs, np_ortho, me_ortho
   USE zhpev_module,     ONLY : pzheevd_drv
 #endif
 

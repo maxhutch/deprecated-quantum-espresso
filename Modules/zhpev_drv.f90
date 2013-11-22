@@ -1462,7 +1462,7 @@ CONTAINS
   SUBROUTINE pzheevd_drv( tv, n, nb, h, w, ortho_cntx )
 
      USE kinds,     ONLY : DP
-     USE mp_global, ONLY : ortho_comm
+     USE mp_diag,   ONLY : ortho_comm
      USE mp,        ONLY : mp_barrier
 #ifdef __ELPA
      USE elpa1
@@ -1510,6 +1510,14 @@ CONTAINS
      call solve_evp_complex(n, n, h, size(h,1), w, v, size(h,1), nb, &
                           mpi_comm_rows, mpi_comm_cols)
      h = v
+
+     CALL MPI_Comm_free( mpi_comm_rows, info )
+     IF( info /= 0 ) &
+        CALL errore( " pzheevd_drv ", " in mpi_comm_free 1 ", ABS( info ) )
+
+     CALL MPI_Comm_free( mpi_comm_cols, info )
+     IF( info /= 0 ) &
+        CALL errore( " pzheevd_drv ", " in mpi_comm_free 2 ", ABS( info ) )
 
 #else
 !

@@ -11,8 +11,9 @@ PROGRAM lr_calculate_spectrum
   USE global_version,      ONLY : version_number
   USE io_global,           ONLY : stdout,ionode, ionode_id
   USE environment,         ONLY: environment_start,environment_end
-  USE mp_global,           ONLY : mp_startup,mp_global_end,mp_barrier
-  USE mp,                  ONLY : mp_bcast
+  USE mp_global,           ONLY : mp_startup,mp_global_end
+  USE mp_world,            ONLY : world_comm
+  USE mp,                  ONLY : mp_bcast, mp_barrier
 
   IMPLICIT NONE
   !
@@ -136,7 +137,7 @@ ENDIF
      READ (5, lr_input, iostat = ios)
   ENDIF
 
-  CALL mp_bcast ( ios, ionode_id)
+  CALL mp_bcast ( ios, ionode_id , world_comm )
   CALL errore ('lr_readin', 'reading lr_input namelist', abs (ios) )
 
   if(trim(td)=="davidson" .or. trim(td)=='david') then
@@ -582,7 +583,7 @@ CLOSE(17)
 ENDIF
 555 print *, "Calculation is finished."
 #ifdef __MPI
-  CALL mp_barrier ()
+  CALL mp_barrier (world_comm)
   CALL mp_global_end ()
 #endif
 
@@ -1024,7 +1025,7 @@ END SUBROUTINE wl_to_color
     filename=trim(prefix)//".plot"
     OPEN(17,file=filename,status="unknown")
     write(17,'("#",2x,"Energy(Ry)",10x,"total",13x,"X",13x,"Y",13x,"Z")')
-    write(17,'("#  Broadening is: ",5x,F10.7,5x"Ry")') epsil
+    write(17,'("#  Broadening is: ",5x,F10.7,5x,"Ry")') epsil
     istep=1
     do while( .not. istep .gt. nstep )
       write(17,'(5E20.8)') absorption(istep,1),absorption(istep,1)*absorption(istep,2),&

@@ -21,7 +21,7 @@ subroutine do_reducible_pola(tf ,options)
   USE polarization,      ONLY : polaw, free_memory_polaw, read_polaw, write_polaw,invert_v_pot, initialize_polaw, &
                                   & read_polaw_global
   USE mp,                ONLY : mp_sum, mp_bcast
-  USE mp_global,         ONLY : nproc,mpime,world_comm
+  USE mp_world,          ONLY : nproc,mpime,world_comm
   USE times_gw,          ONLY : times_freqs
   USE self_energy_storage, ONLY : self_storage,write_self_storage_ondisk,free_memory_self_storage
   USE lanczos
@@ -107,7 +107,7 @@ subroutine do_self_lanczos_time(ss, tf ,options,l_real_axis,energy)
   USE polarization,      ONLY : polaw, free_memory_polaw, read_polaw, write_polaw,invert_v_pot, initialize_polaw, &
                                   & read_polaw_global
   USE mp,                ONLY : mp_sum, mp_bcast
-  USE mp_global,         ONLY : nproc,mpime,world_comm
+  USE mp_world,          ONLY : nproc,mpime,world_comm
   USE times_gw,          ONLY : times_freqs
   USE self_energy_storage, ONLY : self_storage,write_self_storage_ondisk,free_memory_self_storage
   USE lanczos
@@ -205,7 +205,7 @@ subroutine do_self_lanczos_time(ss, tf ,options,l_real_axis,energy)
            n_list(2)=0
         endif
      endif
-     call mp_bcast(n_list,ionode_id)
+     call mp_bcast(n_list,ionode_id,world_comm)
      allocate(i_list(max(n_list(1),n_list(2)),2))
      i_list=0
      if(ionode) then
@@ -220,7 +220,7 @@ subroutine do_self_lanczos_time(ss, tf ,options,l_real_axis,energy)
            close(iun2)
         endif
      endif
-     call mp_bcast(i_list,ionode_id)
+     call mp_bcast(i_list,ionode_id,world_comm)
      n_cycles=n_list(1)
   endif
 
@@ -317,7 +317,7 @@ subroutine do_self_lanczos_time(ss, tf ,options,l_real_axis,energy)
         call free_memory_polaw(ww)
      enddo
      numpw=ww%numpw
-     call mp_bcast(numpw, ionode_id)
+     call mp_bcast(numpw, ionode_id,world_comm)
      if(nbegin > tf%n) allocate(pw_mat(numpw,numpw,l_blk))
 
 !Fourier trasform reducible polarizability matrices to imaginary time
@@ -613,8 +613,8 @@ subroutine do_self_lanczos_time(ss, tf ,options,l_real_axis,energy)
                  
               endif
              iproc=(jj-1)/l_blk_sm
-             call mp_bcast(vtl_j%vt_mat, iproc)
-             call mp_bcast(ttl_j%tt_mat, iproc)
+             call mp_bcast(vtl_j%vt_mat, iproc,world_comm)
+             call mp_bcast(ttl_j%tt_mat, iproc,world_comm)
            else
               call  read_data_pw_vt_mat_lanczos(vtl_j, jj, options%prefix, .false.,is)
               call  read_data_pw_tt_mat_lanczos(ttl_j, jj, options%prefix, .false.,is)
@@ -639,7 +639,7 @@ subroutine do_self_lanczos_time(ss, tf ,options,l_real_axis,energy)
                           e_mat_double(1:lc%numt, 1:nsize_t)=dble(re_e_mat_single(1:lc%numt, nbegin_t:nend_t, iw-nbegin_g+1))
                        
                           call dgemm('T','N',numl,nsize_t,numt,1.d0,ttl_j%tt_mat,numt,e_mat_double,numt,0.d0,&
-	                           &tmp_mat(1,nbegin_t),numl)
+                           &tmp_mat(1,nbegin_t),numl)
                        endif
                     enddo
                     
@@ -826,10 +826,10 @@ subroutine do_self_lanczos_time(ss, tf ,options,l_real_axis,energy)
 
 !mp_sum for distributing on all processors
            if(ii==jj) then
-              call mp_sum(ss%diag(ii,1:2*ss%n+1,is))
+              call mp_sum(ss%diag(ii,1:2*ss%n+1,is),world_comm)
            endif
            if(ss%whole_s) then
-              call mp_sum(ss%whole(jj,ii,1:2*ss%n+1,is))
+              call mp_sum(ss%whole(jj,ii,1:2*ss%n+1,is),world_comm)
            endif
 
      
@@ -890,7 +890,7 @@ subroutine solve_lanczos_single(alpha,re_e_mat,im_e_mat,lc)
   USE basic_structures, ONLY : lanczos_chain, initialize_memory,free_memory
   USE io_global,        ONLY : stdout
   USE mp,               ONLY : mp_sum,mp_bcast
-  USE mp_global,        ONLY : nproc, mpime
+  USE mp_world,         ONLY : nproc, mpime, world_comm
 
   implicit none
 
@@ -931,7 +931,7 @@ subroutine solve_lanczos_single(alpha,re_e_mat,im_e_mat,lc)
         tmp_mat(1:lc%numt,1:lc%num_steps)=lc%o_mat(1:lc%numt,1:lc%num_steps,io-nbegin+1)
      endif
      iproc=(io-1)/l_blk
-     call mp_bcast(tmp_mat(:,:), iproc)
+     call mp_bcast(tmp_mat(:,:), iproc, world_comm)
      omat(:,:)=dcmplx(tmp_mat(:,:),0.d0)
 
    
@@ -985,7 +985,7 @@ subroutine solve_lanczos_fake_single(lc)
   USE basic_structures, ONLY : lanczos_chain, initialize_memory,free_memory
   USE io_global,        ONLY : stdout
   USE mp,               ONLY : mp_sum,mp_bcast
-  USE mp_global,        ONLY : nproc,mpime
+  USE mp_world,         ONLY : nproc,mpime,world_comm
 
   implicit none
 
@@ -1011,7 +1011,7 @@ subroutine solve_lanczos_fake_single(lc)
         o_mat(:,:)=lc%o_mat(:,:,io-nbegin+1)
      endif
      iproc=(io-1)/l_blk
-     call mp_bcast(o_mat(:,:), iproc)
+     call mp_bcast(o_mat(:,:), iproc, world_comm)
 
 
   enddo

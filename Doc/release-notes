@@ -1,11 +1,16 @@
 New in svn version
 
+   * Calling QE from external codes made easier: see new subdirectory COUPLE
+   * PW: Hybrid functionals for USPP and PAW (experimental)
+   * PW: partial support to the use of k-points label in the Brillouin zone
    * PW: Langevin dynamics with Smart Monte Carlo
    * CP: Tkatchenko-Scheffler vdW correction
    * GWW replaced by GWL (using Lanczos chains)
    * turboTDDFT: pseudo_Hamiltonians, Davidson-like diagonalization
    * PWCOND with DFT+U
-   * New functionals: gau-pbe, PW86 (unrevised), B86B
+   * New functionals: gau-pbe, PW86 (unrevised), B86B, XDM (exchange-hole 
+     dipole moment) model of dispersions, vdW-DF3, ddW-DF4 (Klimes et al),
+     rVV10
    * Added the subdirectory FD in PHonon. Calculation of phonon dispersions 
      using the finite displacements supercell approach.
    * dynmat.x can calculate phonon contribution to dielectric tensor
@@ -16,6 +21,12 @@ New in svn version
 
 Incompatible changes in svn version:
 
+   * Initialization of MPI modified in order to simplify usage of QE routines
+     from external codes. It is now possible to run an instance of QE into a
+     mpi communicator passed by the external routine. Changes affect a few MPI
+     initialization routines (e.g. mp_start) and some MPI related modules;
+     the communicator must be explicitly specified when calling mp_* interfaces
+     to low-level MPI libraries.
    * Input variable "london" should be replaced by " vdw_corr='Grimme-D2' "
    * Routine "electrons" doesn't deal any longer with non-scf cases;
      Use routine "non_scf" instead.
@@ -35,6 +46,7 @@ Incompatible changes in svn version:
 
 Fixed in svn version:
 
+   * PWscf: spin-polarized HSE for PAW was incorrectly implemented
    * PHonon: epsil + paw was not working with k-point parallelization.
    * PHonon: problem with the symmetry analysis in D_6h. The problem appeared
      in special cases after the symmetry reshuffling made by the phonon code.

@@ -18,7 +18,7 @@
    USE  expansion
    USE  energies_gww
    USE  start_end
-   USE  mp_global,           ONLY : mpime
+   USE  mp_world,           ONLY : mpime, world_comm
    USE  para_gww
    USE  times_gw
    USE  w_divergence
@@ -136,7 +136,7 @@
    do ispin=1,options%nspin
 
       if(options%starting_point <= 2 .and. options%ending_point >=2 ) then
-         if(options%l_t_wannier) then	
+         if(options%l_t_wannier) then
             call calculate_compact_pola_lanczos(options,ispin)
          endif
          
@@ -293,16 +293,16 @@
       call read_self_storage_ondisk(ss, options)
       !call set_remainder(ss, qp)
       call create_self_energy_fit( tf, se, ss, options,sr,.false.)
-      call mp_barrier
+      call mp_barrier( world_comm )
       call print_fit_onfile(tf, se,ss)
-      call mp_barrier
+      call mp_barrier( world_comm )
       call free_memory_self_storage(ss)
-      call mp_barrier
+      call mp_barrier( world_comm )
       call create_quasi_particles(options,qp,se)
-      call mp_barrier
+      call mp_barrier( world_comm )
       call write_self_expansion(se)
       call free_memory_self_expansion(se)
-      call mp_barrier
+      call mp_barrier( world_comm )
       call printout_quasi_particles(qp)
    endif
 

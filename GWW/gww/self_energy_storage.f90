@@ -88,6 +88,7 @@ CONTAINS
     USE io_global,          ONLY : stdout, ionode,ionode_id
     USE input_gw,           ONLY : input_options
     USE mp,                 ONLY : mp_bcast
+    USE mp_world,           ONLY : world_comm
 
     implicit none
     INTEGER, EXTERNAL :: find_free_unit
@@ -122,9 +123,9 @@ CONTAINS
           enddo
           close(iun)
        endif
-       call mp_bcast(sr%diag(:,ii,1),ionode_id)
+       call mp_bcast(sr%diag(:,ii,1),ionode_id,world_comm)
     enddo
-    call mp_bcast(sr%grid,ionode_id)
+    call mp_bcast(sr%grid,ionode_id,world_comm)
     return
   END SUBROUTINE create_self_on_real
 
@@ -135,6 +136,7 @@ CONTAINS
     USE io_global,          ONLY : stdout, ionode
     USE input_gw,           ONLY : input_options
     USE mp,                 ONLY : mp_barrier
+    USE mp_world,           ONLY : world_comm
     implicit none
     INTEGER, EXTERNAL :: find_free_unit
     TYPE(self_storage) :: ss!the self_energy descriptor to be written on file
@@ -178,7 +180,7 @@ CONTAINS
        enddo
        close(iun)
     endif
-    call mp_barrier
+    call mp_barrier( world_comm )
   END SUBROUTINE write_self_storage_ondisk
 
   SUBROUTINE read_self_storage_ondisk(ss, options)
@@ -188,6 +190,7 @@ CONTAINS
     USE io_global,          ONLY : stdout, ionode, ionode_id
     USE input_gw,           ONLY : input_options
     USE mp,                 ONLY : mp_barrier, mp_bcast
+    USE mp_world,           ONLY : world_comm
     implicit none
     INTEGER, EXTERNAL :: find_free_unit
     TYPE(self_storage) :: ss!the self_energy descriptor to be read from file
@@ -218,17 +221,17 @@ CONTAINS
        
     endif
 
-    call mp_bcast(ss%ontime, ionode_id)
-    call mp_bcast(ss%whole_s, ionode_id)
-    call mp_bcast(ss%n, ionode_id)
-    call mp_bcast(ss%max_i, ionode_id)
-    call mp_bcast(ss%i_min, ionode_id)
-    call mp_bcast(ss%i_max, ionode_id)
-    call mp_bcast(ss%tau, ionode_id)
-    call mp_bcast(ss%n_grid_fit, ionode_id)
-    call mp_bcast(ss%i_min_whole, ionode_id)
-    call mp_bcast(ss%i_max_whole, ionode_id)
-    call mp_bcast(ss%nspin, ionode_id)
+    call mp_bcast(ss%ontime, ionode_id,world_comm)
+    call mp_bcast(ss%whole_s, ionode_id,world_comm)
+    call mp_bcast(ss%n, ionode_id,world_comm)
+    call mp_bcast(ss%max_i, ionode_id,world_comm)
+    call mp_bcast(ss%i_min, ionode_id,world_comm)
+    call mp_bcast(ss%i_max, ionode_id,world_comm)
+    call mp_bcast(ss%tau, ionode_id,world_comm)
+    call mp_bcast(ss%n_grid_fit, ionode_id,world_comm)
+    call mp_bcast(ss%i_min_whole, ionode_id,world_comm)
+    call mp_bcast(ss%i_max_whole, ionode_id,world_comm)
+    call mp_bcast(ss%nspin, ionode_id,world_comm)
 
 !check for consistency
     if(ss%max_i/=options%max_i) then
@@ -285,15 +288,15 @@ CONTAINS
        close(iun)
     endif
    
-    call mp_bcast(ss%diag, ionode_id)
+    call mp_bcast(ss%diag, ionode_id,world_comm)
     if(ss%whole_s) then
-       call mp_bcast(ss%whole, ionode_id)
+       call mp_bcast(ss%whole, ionode_id,world_comm)
     endif
    
    
-    call mp_bcast(ss%diag_freq_fit, ionode_id)
+    call mp_bcast(ss%diag_freq_fit, ionode_id,world_comm)
     if(ss%whole_s) then
-       call mp_bcast(ss%whole_freq_fit, ionode_id)
+       call mp_bcast(ss%whole_freq_fit, ionode_id,world_comm)
     endif
 
     return
@@ -324,6 +327,7 @@ CONTAINS
 
     USE io_global,          ONLY : stdout, ionode
     USE mp,                 ONLY : mp_barrier
+    USE mp_world,           ONLY : world_comm
     implicit none
     INTEGER, EXTERNAL :: find_free_unit
     TYPE(self_on_real),INTENT(in) :: sr!the self_energy descriptor to be written on file  
@@ -358,6 +362,7 @@ CONTAINS
 
     USE io_global,          ONLY : stdout, ionode, ionode_id
     USE mp,                 ONLY : mp_bcast
+    USE mp_world,           ONLY : world_comm
     implicit none
     INTEGER, EXTERNAL :: find_free_unit
     TYPE(self_on_real),INTENT(out) :: sr!the self_energy descriptor to be written on file                
@@ -378,11 +383,11 @@ CONTAINS
        read(iun) sr%i_max
        read(iun) sr%nspin
     endif
-    call mp_bcast(sr%n, ionode_id)
-    call mp_bcast(sr%max_i,ionode_id)
-    call mp_bcast(sr%i_min,ionode_id)
-    call mp_bcast(sr%i_max,ionode_id)
-    call mp_bcast(sr%nspin,ionode_id)
+    call mp_bcast(sr%n, ionode_id,world_comm)
+    call mp_bcast(sr%max_i,ionode_id,world_comm)
+    call mp_bcast(sr%i_min,ionode_id,world_comm)
+    call mp_bcast(sr%i_max,ionode_id,world_comm)
+    call mp_bcast(sr%nspin,ionode_id,world_comm)
     allocate(sr%grid(sr%n))
     allocate(sr%diag(sr%n,sr%max_i,sr%nspin))
     if(ionode) then
@@ -390,8 +395,8 @@ CONTAINS
        read(iun) sr%diag(1:sr%n,1:sr%max_i,1:sr%nspin)
        close(iun)
     endif
-    call mp_bcast(sr%grid,ionode_id)
-    call mp_bcast(sr%diag,ionode_id)
+    call mp_bcast(sr%grid,ionode_id,world_comm)
+    call mp_bcast(sr%diag,ionode_id,world_comm)
 
     return
   end subroutine read_self_on_real
@@ -485,7 +490,7 @@ CONTAINS
    USE energies_gww,           ONLY : quasi_particles
    USE times_gw,           ONLY : times_freqs
    USE w_divergence
-   USE mp_global,            ONLY : nproc,mpime
+   USE mp_world,            ONLY : world_comm,nproc,mpime
 
    implicit none
 
@@ -838,9 +843,9 @@ CONTAINS
     
     
     if(ss%whole_s) then
-       call mp_sum(ss%whole(:,:,:,:))
+       call mp_sum(ss%whole(:,:,:,:),world_comm)
     else
-       call mp_sum(ss%diag(:,:,:))
+       call mp_sum(ss%diag(:,:,:),world_comm)
     end if
     
     call free_memory(uu)
@@ -886,6 +891,7 @@ END SUBROUTINE create_self_ontime
     USE io_global,      ONLY : stdout, ionode
     USE constants,      ONLY : pi
     USE mp,             ONLY : mp_barrier
+    USE mp_world,       ONLY : world_comm
     USE times_gw,       ONLY : times_freqs
 
     implicit none
@@ -1270,7 +1276,7 @@ END SUBROUTINE create_self_ontime
          &  distribute_v_pot, collect_v_pot
     USE mp,                ONLY : mp_sum
     USE para_gww,          ONLY : is_my_pola
-    USE mp_global,            ONLY : nproc,mpime
+    USE mp_world,          ONLY : world_comm,nproc,mpime
   
     implicit none
 
@@ -1487,7 +1493,7 @@ END SUBROUTINE create_self_ontime
           endif
        endif
     enddo
-    call mp_sum(sene(-ss%n:0,:))
+    call mp_sum(sene(-ss%n:0,:),world_comm)
     do ii=1,ss%i_max-wup%nums_occ
        do it=-ss%n,0
           ss%diag(ii+wup%nums_occ,it+ss%n+1,1)=ss%diag(ii+wup%nums_occ, it+ss%n+1,1)+sene(it,ii)
@@ -1661,7 +1667,7 @@ END SUBROUTINE create_self_ontime
          &  distribute_v_pot, collect_v_pot
     USE mp,                ONLY : mp_sum
     USE para_gww,          ONLY : is_my_pola
-    USE mp_global,            ONLY : nproc,mpime
+    USE mp_world,            ONLY : world_comm,nproc,mpime
     USE times_gw,  ONLY : times_freqs
 
 
@@ -1843,7 +1849,7 @@ END SUBROUTINE create_self_ontime
          enddo
       endif
    enddo
-   call mp_sum(sene(-ss%n:0,:))
+   call mp_sum(sene(-ss%n:0,:),world_comm)
    do ii=max(options%i_min,wu%nums_occ(1)+1),options%i_max
        do it=-ss%n,0
           ss%diag(ii,it+ss%n+1,1)=ss%diag(ii, it+ss%n+1,1)+sene(it,ii)
@@ -1878,7 +1884,7 @@ END SUBROUTINE create_self_ontime
          &  distribute_v_pot, collect_v_pot
     USE mp,                ONLY : mp_sum, mp_barrier
     USE para_gww,          ONLY : is_my_pola
-    USE mp_global,            ONLY : nproc,mpime
+    USE mp_world,            ONLY : world_comm,nproc,mpime
     USE times_gw,  ONLY : times_freqs
 
 
@@ -2068,7 +2074,7 @@ END SUBROUTINE create_self_ontime
             !loop on c' states
          do ii=options%i_min,options%i_max
             cpp%cprim=ii
-            call mp_barrier
+            call mp_barrier( world_comm )
             if(.not.options%l_self_beta) then
                call read_data_pw_cprim_prod(cpp, options%prefix,.true.,ok_read,.false.,.false.)
             else
@@ -2137,7 +2143,7 @@ END SUBROUTINE create_self_ontime
          endif
          do ii=options%i_min,options%i_max
             cpp%cprim=ii
-            call mp_barrier
+            call mp_barrier( world_comm )
             if(.not.options%l_self_beta) then
                call read_data_pw_cprim_prod(cpp, options%prefix,.true.,ok_read,.false.,.false.)
             else
@@ -2153,7 +2159,7 @@ END SUBROUTINE create_self_ontime
          enddo
       endif
    enddo
-   call mp_sum(sene(-ss%n:ss%n,:))
+   call mp_sum(sene(-ss%n:ss%n,:),world_comm)
    do ii=options%i_min,options%i_max
        do it=-ss%n,ss%n
           ss%diag(ii,it+ss%n+1,1)=ss%diag(ii, it+ss%n+1,1)+sene(it,ii)
@@ -2197,7 +2203,7 @@ END SUBROUTINE create_self_ontime
          &  distribute_v_pot, collect_v_pot
     USE mp,                ONLY : mp_sum
     USE para_gww,          ONLY : is_my_pola
-    USE mp_global,            ONLY : nproc,mpime
+    USE mp_world,            ONLY : world_comm,nproc,mpime
     USE times_gw,  ONLY : times_freqs
 
 
@@ -2419,7 +2425,7 @@ END SUBROUTINE create_self_ontime
          enddo
       endif
    enddo
-   call mp_sum(sene(-ss%n:ss%n,:))
+   call mp_sum(sene(-ss%n:ss%n,:),world_comm)
    do ii=options%i_min,options%i_max
        do it=-ss%n,ss%n
           ss%diag(ii,it+ss%n+1,1)=ss%diag(ii, it+ss%n+1,1)+sene(it,ii)

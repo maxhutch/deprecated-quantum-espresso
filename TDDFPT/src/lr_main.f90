@@ -57,7 +57,7 @@ PROGRAM lr_main
   INTEGER            :: ip,pol_index,ibnd_occ,ibnd_virt,ibnd
   INTEGER            :: iter_restart,iteration
   LOGICAL            :: rflag, nomsg, tg_tmp
-  COMPLEX(kind=dp)   :: sum_F,sum_c
+  COMPLEX(kind=dp)   :: sum_F,sum_c,temp
   !
   !
   pol_index=1
@@ -101,6 +101,12 @@ PROGRAM lr_main
   ELSE
      CALL lr_solve_e()
   ENDIF
+
+  !do ip = 1, n_ipol
+  !  temp=wfc_dot(ibnd)
+  !enddo
+
+  
   dffts%have_task_groups = tg_tmp
   !
   DEALLOCATE( psic )
@@ -249,6 +255,7 @@ CONTAINS
     USE lr_variables,     ONLY : n_ipol,LR_polarization,restart,bgz_suffix
     USE io_files,         ONLY: prefix, tmp_dir, nd_nmbr, wfc_dir
     USE mp,               ONLY : mp_bcast, mp_barrier,mp_sum
+    USE mp_world,         ONLY : world_comm
     USE io_global,        ONLY : ionode, ionode_id
 
     IMPLICIT NONE
@@ -353,7 +360,7 @@ CONTAINS
 
     !print *,"temp_restart",temp_restart
 #ifdef __MPI
-    CALL mp_sum(temp_restart)
+    CALL mp_sum(temp_restart,world_comm)
 #endif
     !print *, "current temp_restart", temp_restart
     IF (temp_restart > 0 ) THEN

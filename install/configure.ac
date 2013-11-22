@@ -1,4 +1,4 @@
-AC_INIT(ESPRESSO, 5.0.2, , espresso)
+AC_INIT(ESPRESSO, 5.1.svn, , espresso)
 # ----------------------------
 # Non-standard precious variables
 # ----------------------------
@@ -189,7 +189,7 @@ if test "$host" != "" ; then ranlib=echo; fi
 cross_compiling=yes
 if test "$host" = "" ; then host=$build; fi
 
-# identify architecture
+# identify host architecture
 if test "$arch" = ""
 then
         case $host in
@@ -203,7 +203,9 @@ then
                 *-pc-cygwin )           arch=cygwin ;;
                 sx*-nec* )              arch=necsx  ;;
                 powerpc64-*-linux-gnu ) arch=ppc64  ;;
-                * )                     AC_MSG_WARN(incorrect host name ?)
+                *-*-mingw32 )           arch=mingw32;;
+                *-*-mingw64 )           arch=mingw64;;
+                * )                     AC_MSG_WARN(Unrecognized build architecture)
         ;;
         esac
 	    # workaround for Cray-XT machines
@@ -212,7 +214,7 @@ then
         test -d /bgsys && arch=ppc64-bg
         test -f /bgsys/drivers/ppcfloor/bin/runjob && arch=ppc64-bgq
 fi
-echo checking architecture... $arch
+echo detected architecture... $arch
 
 # candidate archiver and archiver flags
 try_ar="ar"
@@ -246,6 +248,11 @@ crayxt* )
         ;;
 mac686 | cygwin )
         try_f90="ifort $try_f90"
+        ;;
+mingw* )
+        ld="$F90"
+        # this is set for C/C++, but we need it for Fortran, too.
+        try_dflags="-D_WIN32"
         ;;
 necsx )
         sxopt=`echo $host|awk '{print substr($1,1,3)}'`
@@ -600,7 +607,7 @@ ia32:path* | ia64:path* | x86_64:path* )
         try_ldflags=""
         try_ldflags_static="-static"
         ;;
-*:gfortran )
+*:*gfortran )
         if test "$use_debug" -eq 1; then
             try_fflags="-O3 -g  -Wall -fbounds-check -frange-check"
         else
@@ -609,8 +616,8 @@ ia32:path* | ia64:path* | x86_64:path* )
         try_fflags_openmp="-fopenmp"
         try_f90flags="\$(FFLAGS) -x f95-cpp-input"
         try_fflags_noopt="-O0 -g"
-        try_ldflags="-g"
-	    try_ldflags_openmp="-fopenmp"
+        try_ldflags="-g -pthread"
+        try_ldflags_openmp="-fopenmp"
         try_dflags="$try_dflags -D__GFORTRAN -D__STD_F95"
         try_ldflags_static="-static"
         ;;
@@ -860,8 +867,8 @@ echo setting CPP... $cpp
 
 echo $ECHO_N "setting CPPFLAGS... $ECHO_C"
 case $cpp in
-        cpp)  try_cppflags="-P -traditional" ;;
-        fpp)  try_cppflags="-P"              ;;
+        cpp)  try_cppflags="-P -C -traditional" ;;
+        fpp)  try_cppflags="-P -C "              ;;
         *)    try_cppflags=""                ;;
 esac
 if test "$cppflags" = "" ; then cppflags=$try_cppflags ; fi
@@ -1071,7 +1078,8 @@ then
                 ;;
 
         x86_64:* )
-                try_libdirs="/opt/intel/Compiler/*/*/mkl/lib/em64t
+                try_libdirs="/opt/intel/composer*/mkl/lib/intel64
+                             /opt/intel/Compiler/*/*/mkl/lib/em64t
                              /opt/intel/mkl/*/lib/em64t
                              /opt/intel/mkl*/lib/em64t
                              /opt/intel/mkl/lib"
@@ -1133,7 +1141,8 @@ then
 
         ia32:* )
                 # check for mkl (in several directories)
-                try_libdirs="/opt/intel/Compiler/*/*/mkl/lib/32
+                try_libdirs="/opt/intel/composer*/mkl/lib/ia32
+                             /opt/intel/Compiler/*/*/mkl/lib/32
                              /opt/intel/mkl/*/lib/32
                              /opt/intel/mkl*/lib/32
                              /opt/intel/mkl/lib"
@@ -1412,7 +1421,7 @@ then
                         FFLAGS="$test_fflags"
                         LDFLAGS="$test_ldflags $try_loption"
                         LIBS=""
-                        AC_SEARCH_LIBS(dgemm, blas-3 blas, have_blas=1
+                        AC_SEARCH_LIBS(dgemm, blas-3 openblas blas, have_blas=1
                                        blas_libs="$try_loption $LIBS")
                         if test "$ac_cv_search_dgemm" != "no"
                         then break ; fi
@@ -1927,6 +1936,14 @@ fi
        LIBS="$mpi_libs $scalapack_libs"
        AC_SEARCH_LIBS(pdgemr2d, "" , have_scalapack=1
                       try_dflags="$try_dflags -D__SCALAPACK")
+       test "$have_scalapack" -eq 1 && break
+# scalapack (including blacs), no -L options
+       unset ac_cv_search_pdgemr2d # clear cached value
+       scalapack_libs="-lscalapack"
+       LIBS="$mpi_libs $scalapack_libs"
+       LDFLAGS=""
+       AC_SEARCH_LIBS(pdgemr2d, "" , have_scalapack=1
+                   try_dflags="$try_dflags -D__SCALAPACK")
        test "$have_scalapack" -eq 1 && break
 # scalapack + blacs, no -L options
        unset ac_cv_search_pdgemr2d # clear cached value

@@ -1,17 +1,19 @@
 # Makefile for XSpectra
-# Adapted from TDDFPT main Makefile
+sinclude ../make.sys
 
 default: all
 
 all:
-	if test -d src ; then \
-	( cd src ; if test "$(MAKE)" = "" ; then make $(MFLAGS) $@; \
-	else $(MAKE) $(MFLAGS) $@ ; fi ) ; fi ; \
+	( cd src ; $(MAKE) all || exit 1 )
 
 clean :
-	if test -d src ; then \
-	( cd src ; if test "$(MAKE)" = "" ; then make clean ; \
-	else $(MAKE) clean ; fi ) ; fi ;\
+	( cd src ; $(MAKE) clean )
+
+doc:
+	:
+
+doc_clean:
+	:
 
 distclean: clean
 

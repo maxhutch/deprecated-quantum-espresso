@@ -128,6 +128,7 @@
     celldm = celldm_
     a = a_ ; b = b_ ; c = c_ ; cosab = cosab_ ; cosac = cosac_ ; cosbc = cosbc_
     cell_units = cell_units_
+    units = 0.0_DP
     !
     IF ( trd_ht ) THEN
       !
@@ -760,7 +761,6 @@
       WRITE( stdout, 340 ) omega
     END IF
 
-300 FORMAT( 3X, 'ibrav = ',I4)
 305 FORMAT( 3X, 'alat  = ',F14.8)
 310 FORMAT( 3X, 'a1    = ',3F14.8)
 320 FORMAT( 3X, 'a2    = ',3F14.8)

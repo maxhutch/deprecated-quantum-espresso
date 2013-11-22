@@ -343,7 +343,7 @@
     USE io_global,           ONLY : stdout
     USE constants,           ONLY : eps8, pi
     USE times_gw,            ONLY : times_freqs
-    USE mp_global,           ONLY : nproc, mpime,world_comm! group
+    USE mp_world,            ONLY : nproc, mpime,world_comm! group
     USE parallel_include
 
     implicit none
@@ -466,7 +466,7 @@
     USE  io_global,           ONLY : stdout
     USE  constants,           ONLY : eps8, pi
     USE  mp,                  ONLY : mp_barrier
-    USE  mp_global,           ONLY : mpime, nproc
+    USE  mp_world,            ONLY : world_comm, mpime, nproc
     USE  times_gw,            ONLY : times_freqs
 
     implicit none
@@ -560,7 +560,7 @@
       else
          CALL write_polaw_range(pw,debug,fftd%firstrow,fftd%firstrow+fftd%numrows-1,.true.)
       endif
-      call mp_barrier
+      call mp_barrier( world_comm )
    enddo
 
 
@@ -581,7 +581,7 @@
     USE  io_global,           ONLY : stdout
     USE  constants,           ONLY : eps8, pi
     USE  mp,                  ONLY : mp_barrier
-    USE  mp_global,           ONLY : mpime, nproc, world_comm!group
+    USE  mp_world,            ONLY : mpime, nproc, world_comm!group
     USE  times_gw,            ONLY : times_freqs
     USE  parallel_include
 

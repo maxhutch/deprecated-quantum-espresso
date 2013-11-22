@@ -118,6 +118,7 @@ MODULE read_namelists_module
        nberrycyc  = 1
        lkpoint_dir = .TRUE.
        lecrpa   = .FALSE.   
+       tqmmm = .FALSE.
        !
        saverho = .TRUE.
        memory = 'default'
@@ -235,7 +236,7 @@ MODULE read_namelists_module
        ! 
        real_space = .false.
        !
-       ! ... DFT-D, Tkatchenko-Scheffler
+       ! ... DFT-D, Tkatchenko-Scheffler, XDM
        !
        vdw_corr    = 'none'
        london      = .false.
@@ -244,6 +245,9 @@ MODULE read_namelists_module
        ts_vdw          = .FALSE.
        ts_vdw_isolated = .FALSE.
        ts_vdw_econv_thr = 1.E-6_DP
+       xdm = .FALSE.
+       xdm_a1 = 0.6836_DP
+       xdm_a2 = 1.5045_DP
        !
 #ifdef __ENVIRON
        ! ... Environ
@@ -672,6 +676,7 @@ MODULE read_namelists_module
        CALL mp_bcast( lberry,        ionode_id, intra_image_comm )
        CALL mp_bcast( gdir,          ionode_id, intra_image_comm )
        CALL mp_bcast( nppstr,        ionode_id, intra_image_comm )
+       CALL mp_bcast( point_label_type,   ionode_id, intra_image_comm )
        CALL mp_bcast( lkpoint_dir,   ionode_id, intra_image_comm )
        CALL mp_bcast( wf_collect,    ionode_id, intra_image_comm )
        CALL mp_bcast( printwfc,      ionode_id, intra_image_comm )
@@ -680,6 +685,7 @@ MODULE read_namelists_module
        CALL mp_bcast( nberrycyc,     ionode_id, intra_image_comm )
        CALL mp_bcast( saverho,       ionode_id, intra_image_comm )
        CALL mp_bcast( lecrpa,        ionode_id, intra_image_comm )
+       CALL mp_bcast( tqmmm,         ionode_id, intra_image_comm )
        CALL mp_bcast( vdw_table_name,ionode_id, intra_image_comm )
        CALL mp_bcast( memory,        ionode_id, intra_image_comm )
        !
@@ -797,6 +803,9 @@ MODULE read_namelists_module
        CALL mp_bcast( london,                    ionode_id, intra_image_comm )
        CALL mp_bcast( london_s6,                 ionode_id, intra_image_comm )
        CALL mp_bcast( london_rcut,               ionode_id, intra_image_comm )
+       CALL mp_bcast( xdm,                       ionode_id, intra_image_comm )
+       CALL mp_bcast( xdm_a1,                    ionode_id, intra_image_comm )
+       CALL mp_bcast( xdm_a2,                    ionode_id, intra_image_comm )
        !
        CALL mp_bcast( no_t_rev,                  ionode_id, intra_image_comm )
 #ifdef __ENVIRON
@@ -917,7 +926,7 @@ MODULE read_namelists_module
        CALL mp_bcast( occupation_constraints, ionode_id, intra_image_comm )
        !
        ! ... real space ...
-       CALL mp_bcast( real_space, ionode_id)
+       CALL mp_bcast( real_space,         ionode_id, intra_image_comm )
        CALL mp_bcast( adaptive_thr,       ionode_id, intra_image_comm )
        CALL mp_bcast( conv_thr_init,      ionode_id, intra_image_comm )
        CALL mp_bcast( conv_thr_multi,     ionode_id, intra_image_comm )

@@ -249,7 +249,11 @@ MODULE input_parameters
           ! if true symmetry in scf run is neglected for RPA Ec calculation
           ! 
 
+        LOGICAL :: tqmmm = .FALSE.    ! QM/MM coupling. enabled if .true.
+
         CHARACTER(len=256) :: vdw_table_name = ' '
+
+        CHARACTER(len=10) :: point_label_type='SC'
 
         CHARACTER(len=80) :: memory = 'default' 
           ! controls memory usage 
@@ -260,23 +264,13 @@ MODULE input_parameters
           ! if memory = 'large' then QE tries to use (when implemented) algorithms using more memory
           !                     to enhance performance.
 
-#if defined (__MS2)
-        LOGICAL :: MS2_enabled = .false.       ! Enable the shared memory exchange in MS2
-        CHARACTER(len=256) :: MS2_handler = ' '! Name for the shared memory handler in MS2
-#endif
-
         NAMELIST / control / title, calculation, verbosity, restart_mode, &
           nstep, iprint, isave, tstress, tprnfor, dt, ndr, ndw, outdir,   &
           prefix, wfcdir, max_seconds, ekin_conv_thr, etot_conv_thr,      &
           forc_conv_thr, pseudo_dir, disk_io, tefield, dipfield, lberry,  &
           gdir, nppstr, wf_collect, printwfc, lelfield, nberrycyc, refg,  &
           tefield2, saverho, tabps, lkpoint_dir, use_wannier, lecrpa,     &
-          vdw_table_name, lorbm, memory
-
-
-#if defined ( __MS2)
-        NAMELIST / control / MS2_enabled, MS2_handler
-#endif
+          tqmmm, vdw_table_name, lorbm, memory, point_label_type
 
 !
 !=----------------------------------------------------------------------------=!
@@ -401,11 +395,11 @@ MODULE input_parameters
         REAL(DP) :: alpha_pen(10) = 0.0_DP
 
           ! next group of variables PWSCF ONLY
-          !
-        INTEGER  :: nqx1 = 1, nqx2 = 1, nqx3=1
+          ! 
           !
         REAL(DP) :: exx_fraction = -1.0_DP      ! if negative, use defaults
         REAL(DP) :: screening_parameter = -1.0_DP
+        INTEGER  :: nqx1 = 0, nqx2 = 0, nqx3=0  ! use the same values as nk1, nk2, nk3
         !gau-pbe in
         REAL(DP) :: gau_parameter = -1.0_DP
         !gau-pbe out
@@ -472,6 +466,7 @@ MODULE input_parameters
           !  'dft-d' or 'grimme-d2' [S.Grimme, J.Comp.Chem. 27, 1787 (2006)]
           !  'ts', 'ts-vdW', 'tkatchenko-scheffler'
           !  (Tkatchenko & Scheffler, Phys. Rev. Lett. 102, 073005 (2009))
+          !  'xdm' (Otero de la Roza and Johnson, J. Chem. Phys. 136 (2012) 174109)
 
         LOGICAL   :: london = .false.
           ! OBSOLESCENT: same as vdw_corr='grimme-d2'
@@ -488,6 +483,14 @@ MODULE input_parameters
         REAL(DP) :: ts_vdw_econv_thr = 1.0E-6_DP
           ! convergence criterion for TS-vdW energy for periodic system 
           !
+
+        LOGICAL :: xdm = .FALSE.
+          ! OBSOLESCENT: same as vdw_corr='xdm'
+        REAL(DP) :: xdm_a1 = 0.6836_DP
+        REAL(DP) :: xdm_a2 = 1.5045_DP
+          ! xdm_a1 and xdm_a2 -- parameters for the BJ damping function
+          ! The default values are for the b86bpbe functional.
+
 #ifdef __ENVIRON
         LOGICAL   :: do_environ = .false.
 #endif
@@ -538,6 +541,7 @@ MODULE input_parameters
              tot_charge, tot_magnetization, spline_ps, one_atom_occupations,  &
              vdw_corr, london, london_s6, london_rcut,                        &
              ts_vdw, ts_vdw_isolated, ts_vdw_econv_thr,                       &
+             xdm, xdm_a1, xdm_a2,                                             &
              step_pen, A_pen, sigma_pen, alpha_pen, no_t_rev,                 &
              esm_bc, esm_efield, esm_w, esm_nfit, esm_debug, esm_debug_gpmax
 

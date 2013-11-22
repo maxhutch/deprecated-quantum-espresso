@@ -23,6 +23,7 @@ SUBROUTINE phq_readin()
   USE ions_base,     ONLY : nat, ntyp => nsp
   USE io_global,     ONLY : ionode_id
   USE mp,            ONLY : mp_bcast,mp_barrier
+  USE mp_world,      ONLY : world_comm
   USE ions_base,     ONLY : amass, atm
   USE input_parameters, ONLY : max_seconds, nk1, nk2, nk3, k1, k2, k3
   USE start_k,       ONLY : reset_grid
@@ -53,11 +54,11 @@ SUBROUTINE phq_readin()
   USE ldaU,          ONLY : lda_plus_u
   USE control_flags, ONLY : iverbosity, modenum, twfcollect,io_level
   USE io_global,     ONLY : ionode, stdout
-  USE mp_global,     ONLY : nproc_pool, nproc_pool_file, &
-                            nimage, my_image_id,    &
-                            nproc_image_file, nproc_image, npool, &
-                            get_ntask_groups, ntask_groups_file,  &
-                            nproc_bgrp_file
+  USE mp_global,     ONLY : nproc_pool_file, nproc_image_file, &
+                            ntask_groups_file, nproc_bgrp_file
+  USE mp_images,     ONLY : nimage, my_image_id, nproc_image
+  USE mp_pools,      ONLY : nproc_pool, npool
+  USE mp_bands,      ONLY : ntask_groups
   USE paw_variables, ONLY : okpaw
   USE ramanm,        ONLY : eth_rps, eth_ns, lraman, elop, dek
   USE freq_ph,       ONLY : fpol, fiu, nfs
@@ -184,9 +185,9 @@ SUBROUTINE phq_readin()
   !
   ENDIF
   !
-  CALL mp_bcast(ios, ionode_id )
+  CALL mp_bcast(ios, ionode_id, world_comm )
   CALL errore( 'phq_readin', 'reading title ', ABS( ios ) )
-  CALL mp_bcast(title, ionode_id )
+  CALL mp_bcast(title, ionode_id, world_comm )
   !
   ! Rewind the input if the title is actually the beginning of inputph namelist
   !
@@ -194,7 +195,7 @@ SUBROUTINE phq_readin()
     WRITE(*, '(6x,a)') "Title line not specified: using 'default'."
     title='default'
     IF (ionode) REWIND(5, iostat=ios)
-    CALL mp_bcast(ios, ionode_id )
+    CALL mp_bcast(ios, ionode_id, world_comm )
     CALL errore('phq_readin', 'Title line missing from input.', abs(ios))
   ENDIF
   !
@@ -278,7 +279,7 @@ SUBROUTINE phq_readin()
   IF (ionode) READ( 5, INPUTPH, IOSTAT = ios )
   !
 
-  CALL mp_bcast(ios, ionode_id)
+  CALL mp_bcast(ios, ionode_id, world_comm)
   CALL errore( 'phq_readin', 'reading inputph namelist', ABS( ios ) )
   !
   IF (ionode) tmp_dir = trimcheck (outdir)
@@ -290,7 +291,7 @@ SUBROUTINE phq_readin()
   IF(dvscf_star%ext(1:5)/='auto:') dvscf_star%ext = 'auto:'//dvscf_star%ext
 
   CALL bcast_ph_input ( )
-  CALL mp_bcast(nogg, ionode_id )
+  CALL mp_bcast(nogg, ionode_id, world_comm )
   !
 
   ! ... Check all namelist variables
@@ -364,9 +365,9 @@ SUBROUTINE phq_readin()
         READ (5, *, iostat = ios) (xq (ipol), ipol = 1, 3)
   END IF
 
-  CALL mp_bcast(ios, ionode_id)
+  CALL mp_bcast(ios, ionode_id, world_comm)
   CALL errore ('phq_readin', 'reading xq', ABS (ios) )
-  CALL mp_bcast(xq, ionode_id )
+  CALL mp_bcast(xq, ionode_id, world_comm )
   IF (.NOT.ldisp) THEN
      lgamma = xq (1) .EQ.0.D0.AND.xq (2) .EQ.0.D0.AND.xq (3) .EQ.0.D0
      IF ( (epsil.OR.zue) .AND..NOT.lgamma) CALL errore ('phq_readin', &
@@ -398,9 +399,9 @@ SUBROUTINE phq_readin()
            READ (5, *, iostat = ios) nfs
         ENDIF
      ENDIF
-     CALL mp_bcast(ios, ionode_id )
+     CALL mp_bcast(ios, ionode_id, world_comm )
      CALL errore ('phq_readin', 'reading number of FREQUENCIES', ABS(ios) )
-     CALL mp_bcast(nfs, ionode_id )
+     CALL mp_bcast(nfs, ionode_id, world_comm )
      if (nfs < 1) call errore('phq_readin','Too few frequencies',1)
      ALLOCATE(fiu(nfs))
      IF (ionode) THEN
@@ -412,9 +413,9 @@ SUBROUTINE phq_readin()
            END DO
         END IF
      END IF
-     CALL mp_bcast(ios, ionode_id)
+     CALL mp_bcast(ios, ionode_id, world_comm)
      CALL errore ('phq_readin', 'reading FREQUENCIES card', ABS(ios) )
-     CALL mp_bcast(fiu, ionode_id )
+     CALL mp_bcast(fiu, ionode_id, world_comm )
   ELSE
      nfs=1
       ALLOCATE(fiu(1))
@@ -498,7 +499,7 @@ SUBROUTINE phq_readin()
      CALL errore('phq_readin',&
      'pw.x run with a different number of pools. Use wf_collect=.true.',1)
 
-  IF (get_ntask_groups() > 1) &
+  IF (ntask_groups > 1) &
      CALL errore('phq_readin','task_groups not available in phonon',1)
 
   IF (nproc_bgrp_file /= nproc_pool_file) &
@@ -597,9 +598,9 @@ SUBROUTINE phq_readin()
      IF (ionode) &
      READ (5, *, iostat = ios) (atomo (na), na = 1, &
           nat_todo)
-     CALL mp_bcast(ios, ionode_id )
+     CALL mp_bcast(ios, ionode_id, world_comm )
      CALL errore ('phq_readin', 'reading atoms', ABS (ios) )
-     CALL mp_bcast(atomo, ionode_id )
+     CALL mp_bcast(atomo, ionode_id, world_comm )
   ENDIF
   nat_todo_input=nat_todo
 

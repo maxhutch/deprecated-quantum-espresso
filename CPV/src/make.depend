@@ -1,6 +1,7 @@
 berry_phase.o : ../../Modules/io_global.o
 berry_phase.o : ../../Modules/mp.o
 berry_phase.o : ../../Modules/mp_global.o
+berry_phase.o : ../../Modules/mp_world.o
 berry_phase.o : ../../Modules/recvec.o
 berry_phase.o : ../../Modules/stick_base.o
 berryion.o : ../../Modules/cell_base.o
@@ -96,6 +97,7 @@ cp_autopilot.o : ../../Modules/io_global.o
 cp_autopilot.o : ../../Modules/ions_base.o
 cp_autopilot.o : ../../Modules/kind.o
 cp_autopilot.o : ../../Modules/mp.o
+cp_autopilot.o : ../../Modules/mp_world.o
 cp_autopilot.o : ../../Modules/parser.o
 cp_autopilot.o : ../../Modules/timestep.o
 cp_autopilot.o : ../../Modules/wave_base.o
@@ -120,7 +122,13 @@ cp_restart.o : ../../Modules/ions_base.o
 cp_restart.o : ../../Modules/kernel_table.o
 cp_restart.o : ../../Modules/kind.o
 cp_restart.o : ../../Modules/mp.o
+cp_restart.o : ../../Modules/mp_bands.o
+cp_restart.o : ../../Modules/mp_diag.o
 cp_restart.o : ../../Modules/mp_global.o
+cp_restart.o : ../../Modules/mp_images.o
+cp_restart.o : ../../Modules/mp_pools.o
+cp_restart.o : ../../Modules/mp_pots.o
+cp_restart.o : ../../Modules/mp_world.o
 cp_restart.o : ../../Modules/parameters.o
 cp_restart.o : ../../Modules/parser.o
 cp_restart.o : ../../Modules/recvec.o
@@ -225,7 +233,6 @@ cprstart.o : ../../Modules/check_stop.o
 cprstart.o : ../../Modules/command_line_options.o
 cprstart.o : ../../Modules/environment.o
 cprstart.o : ../../Modules/io_global.o
-cprstart.o : ../../Modules/mp.o
 cprstart.o : ../../Modules/mp_global.o
 cprstart.o : ../../Modules/mp_images.o
 cprstart.o : ../../Modules/read_input.o
@@ -412,6 +419,7 @@ init.o : ../../Modules/io_files.o
 init.o : ../../Modules/io_global.o
 init.o : ../../Modules/ions_base.o
 init.o : ../../Modules/kind.o
+init.o : ../../Modules/mp_bands.o
 init.o : ../../Modules/mp_global.o
 init.o : ../../Modules/recvec.o
 init.o : ../../Modules/recvec_subs.o
@@ -583,6 +591,7 @@ makov_payne.o : ../../Modules/ions_base.o
 makov_payne.o : ../../Modules/kind.o
 makov_payne.o : ../../Modules/mp.o
 makov_payne.o : ../../Modules/mp_global.o
+makov_payne.o : ../../Modules/mp_world.o
 makov_payne.o : ../../Modules/parallel_include.o
 makov_payne.o : gvecw.o
 makov_payne.o : ions_positions.o
@@ -901,8 +910,6 @@ spline.o : ../../Modules/kind.o
 stop_run.o : ../../Modules/constraints_module.o
 stop_run.o : ../../Modules/control_flags.o
 stop_run.o : ../../Modules/environment.o
-stop_run.o : ../../Modules/io_files.o
-stop_run.o : ../../Modules/io_global.o
 stop_run.o : ../../Modules/mp_global.o
 stress.o : ../../Modules/cell_base.o
 stress.o : ../../Modules/constants.o
@@ -926,7 +933,8 @@ tsvdw.o : ../../Modules/io_global.o
 tsvdw.o : ../../Modules/ions_base.o
 tsvdw.o : ../../Modules/kind.o
 tsvdw.o : ../../Modules/mp.o
-tsvdw.o : ../../Modules/mp_global.o
+tsvdw.o : ../../Modules/mp_images.o
+tsvdw.o : ../../Modules/mp_world.o
 tsvdw.o : ../../Modules/parallel_include.o
 tsvdw.o : ../../Modules/uspp.o
 tsvdw.o : mainvar.o
@@ -945,6 +953,7 @@ vofrho.o : ../../Modules/mp_global.o
 vofrho.o : ../../Modules/recvec.o
 vofrho.o : ../../Modules/sic.o
 vofrho.o : ../../Modules/uspp.o
+vofrho.o : ../../Modules/xc_rVV10.o
 vofrho.o : ../../Modules/xc_vdW_DF.o
 vofrho.o : cp_interfaces.o
 vofrho.o : energies.o
@@ -964,7 +973,8 @@ vol_clu.o : ../../Modules/io_global.o
 vol_clu.o : ../../Modules/ions_base.o
 vol_clu.o : ../../Modules/kind.o
 vol_clu.o : ../../Modules/mp.o
-vol_clu.o : ../../Modules/mp_global.o
+vol_clu.o : ../../Modules/mp_bands.o
+vol_clu.o : ../../Modules/mp_world.o
 vol_clu.o : ../../Modules/parameters.o
 vol_clu.o : ../../Modules/recvec.o
 vol_clu.o : ions_positions.o

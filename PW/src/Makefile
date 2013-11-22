@@ -3,7 +3,7 @@
 include ../../make.sys
 
 # location of needed modules and included files (if any)
-MODFLAGS= $(MOD_FLAG)../../iotk/src $(MOD_FLAG)../../Modules $(MOD_FLAG).
+MODFLAGS= $(MOD_FLAG)../../iotk/src $(MOD_FLAG)../../Modules
 IFLAGS=
 
 PWOBJS = \
@@ -126,7 +126,6 @@ martyna_tuckerman.o \
 memory_report.o \
 mix_rho.o \
 move_ions.o \
-ms2.o \
 multable.o \
 n_plane_waves.o \
 new_ns.o \
@@ -139,6 +138,7 @@ openfil.o \
 orthoatwfc.o \
 output_tau.o \
 para.o \
+paw_exx.o \
 paw_init.o \
 paw_onecenter.o \
 paw_symmetry.o \
@@ -211,6 +211,7 @@ transform_qq_so.o \
 trnvecc.o \
 tweights.o \
 update_pot.o \
+us_exx.o \
 usnldiag.o \
 v_of_rho.o \
 vcsmd.o \
@@ -218,6 +219,7 @@ vcsubs.o \
 vhpsi.o \
 vloc_of_g.o \
 vloc_psi.o \
+xdm_dispersion.o \
 xk_wk_collect.o \
 wfcinit.o \
 write_ns.o \
@@ -231,13 +233,13 @@ wannier_clean.o \
 wannier_occ.o \
 wannier_enrg.o \
 
-QEMODS=../../Modules/libqemod.a 
+QEMODS=../../Modules/libqemod.a
 
 TLDEPS=bindir mods libs liblapack libblas libenviron
 
 LIBOBJS	= ../../flib/ptools.a ../../flib/flib.a ../../clib/clib.a ../../iotk/src/libiotk.a
 
-all : tldeps pw.x manypw.x generate_vdW_kernel_table.x
+all : tldeps pw.x manypw.x generate_vdW_kernel_table.x generate_rVV10_kernel_table.x
 
 pw.x : $(PWOBJS) libpw.a $(LIBOBJS) $(QEMODS)
 	$(LD) $(LDFLAGS) -o $@ \
@@ -253,8 +255,9 @@ libpw.a : $(PWLIBS)
 	$(AR) $(ARFLAGS) $@ $?
 	$(RANLIB) $@
 
-tldeps:
-	test -n "$(TLDEPS)" && ( cd ../.. ; $(MAKE) $(MFLAGS) $(TLDEPS) || exit 1) || :
+tldeps :
+	if test -n "$(TLDEPS)" ; then \
+	( cd ../.. ; $(MAKE) $(TLDEPS) || exit 1 ) ; fi
 
 clean :
 	- /bin/rm -f *.x *.o *.a *~ *.F90 *.d *.mod *.i *.L
@@ -263,6 +266,12 @@ generate_vdW_kernel_table.x : libpw.a generate_vdW_kernel_table.o
 	$(LD) $(LDFLAGS) -o $@ \
 		generate_vdW_kernel_table.o $(QEMODS) libpw.a $(LIBOBJS) $(LIBS)
 	- ( cd ../../bin; ln -fs ../PW/src/$@ . )
+
+generate_rVV10_kernel_table.x : libpw.a generate_rVV10_kernel_table.o
+	$(LD) $(LDFLAGS) -o $@ \
+		generate_rVV10_kernel_table.o $(QEMODS) libpw.a $(LIBOBJS) $(LIBS)
+	- ( cd ../../bin; ln -fs ../PW/src/$@ . )
+
 
 include make.depend
 

@@ -20,7 +20,8 @@ subroutine wannier_bse(ispin,w_wfcs,o_mat)
                           max_ngm,numw_prod
    USE fft_custom_gwl
    USE wvfct,    ONLY : igk, g2kin, npwx, npw, nbnd, nbndx, ecutwfc
-   USE mp_global, ONLY : mpime, nproc, intra_pool_comm
+   USE mp_pools, ONLY : intra_pool_comm
+   USE mp_world, ONLY : mpime, nproc, world_comm
    USE mp,             ONLY : mp_sum
    USE gvect
    USE wavefunctions_module, ONLY :  psic
@@ -105,7 +106,7 @@ subroutine wannier_bse(ispin,w_wfcs,o_mat)
 ! compute the overlap matrix o_vv'
    call dgemm('T','N',num_nbndv(ispin),num_nbndv(ispin),fc%nrxxt,1.d0, w_wfcs_2, &
         & fc%nrxxt,w_wfcs_2, fc%nrxxt, 0.d0, o_mat,num_nbndv(ispin))        
-   call mp_sum(o_mat)
+   call mp_sum(o_mat,world_comm)
    
    o_mat(1:num_nbndv(ispin),1:num_nbndv(ispin))= &
         & o_mat(1:num_nbndv(ispin),1:num_nbndv(ispin))/(fc%nr1t*fc%nr2t*fc%nr3t)
@@ -173,7 +174,7 @@ subroutine wannier_bse(ispin,w_wfcs,o_mat)
         psic(1:fc%nrxxt)=ww_prod(1:fc%nrxxt)
         CALL cft3t(fc, psic, fc%nr1t, fc%nr2t, fc%nr3t, fc%nrx1t, fc%nrx2t, fc%nrx3t, -2 )
         ww_prodg(1:fc%npwt) = psic(fc%nlt(1:fc%npwt))
-        !if(fc%gstart_t==2) ww_prodg(1)=dble(ww_prodg(1))! DEBUG MI SA CHE E SBAGLIATO
+      
 
         if(fc%dual_t==4.d0) then
            ww_prodg2(:)=ww_prodg(:)
@@ -238,6 +239,8 @@ subroutine wannier_bse(ispin,w_wfcs,o_mat)
    endif  
 
    allocate(z(numw_prod))
+   z(1:numw_prod)=0.d0
+
 
    do iv=1, num_nbndv(ispin)
      do jv=1, num_nbndv(ispin)
@@ -258,7 +261,7 @@ subroutine wannier_bse(ispin,w_wfcs,o_mat)
              z(ii)=z(ii)-dble(p_basis(1,ii)*conjg(ww_prodg2(1)))
           enddo
         endif 
-        call mp_sum(z)
+        call mp_sum(z,world_comm)
         if(ionode) then
            write(iunz) z
         endif

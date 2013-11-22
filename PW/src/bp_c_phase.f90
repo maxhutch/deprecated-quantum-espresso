@@ -172,7 +172,7 @@ SUBROUTINE c_phase
                                     deallocate_bec_type
    USE noncollin_module,     ONLY : noncolin, npol, nspin_lsda
    USE spin_orb,             ONLY : lspinorb
-   USE mp_global,            ONLY : intra_bgrp_comm, nproc_bgrp
+   USE mp_bands,             ONLY : intra_bgrp_comm, nproc_bgrp
    USE mp,                   ONLY : mp_sum
 
 !  --- Avoid implicit definitions ---
@@ -283,7 +283,6 @@ SUBROUTINE c_phase
 !  -------------------------------------------------------------------------   !
 !                               INITIALIZATIONS
 !  -------------------------------------------------------------------------   !
-
    ALLOCATE (psi(npwx*npol,nbnd))
    ALLOCATE (aux(ngm*npol))
    ALLOCATE (aux0(ngm*npol))

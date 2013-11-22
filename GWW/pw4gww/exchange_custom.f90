@@ -62,11 +62,12 @@ MODULE exchange_custom
 !experimental version work just with factor 1/2
 
       USE io_global, ONLY : stdout, ionode,ionode_id
-      USE mp_global, ONLY : me_pool,nproc,intra_pool_comm
+      USE mp_global, ONLY : me_pool,intra_pool_comm
       USE cell_base, ONLY: at, alat, tpiba, omega, tpiba2,bg
       USE constants, ONLY : e2, pi, tpi, fpi, RYTOEV
       USE wavefunctions_module, ONLY : psic
       USE mp, ONLY : mp_sum
+      USE mp_world, ONLY : world_comm, nproc
       USE wvfct,    ONLY : npwx, npw, wg
       USE gvect
       USE mp_wave, ONLY : mergewf,splitwf
@@ -792,14 +793,15 @@ MODULE exchange_custom
 !experimental version work just with factor 1/2
 
       USE io_global, ONLY : stdout, ionode,ionode_id
-      USE mp_global, ONLY : me_pool,nproc,intra_pool_comm
-      USE cell_base, ONLY: at, alat, tpiba, omega, tpiba2,bg
+      USE mp_global, ONLY : me_pool,intra_pool_comm
+      USE cell_base, ONLY : at, alat, tpiba, omega, tpiba2,bg
       USE constants, ONLY : e2, pi, tpi, fpi, RYTOEV
       USE wavefunctions_module, ONLY : psic
-      USE mp, ONLY : mp_sum
-      USE wvfct,    ONLY : npwx, npw
+      USE mp,        ONLY : mp_sum
+      USE mp_world,  ONLY : world_comm, nproc
+      USE wvfct,     ONLY : npwx, npw
       USE gvect
-      USE mp_wave, ONLY : mergewf,splitwf
+      USE mp_wave,   ONLY : mergewf,splitwf
 
       implicit none
 
@@ -1102,7 +1104,7 @@ MODULE exchange_custom
          do i=1,exx_cus%fft_g2r%nrxxt
             sca=sca+psi_r(i)*vexc(i)
          enddo
-         call mp_sum(sca)
+         call mp_sum(sca,world_comm)
          sca=sca/dble(exx_cus%fft_g2r%nr1t*exx_cus%fft_g2r%nr2t*exx_cus%fft_g2r%nr3t)
          write(stdout,*) 'PERIODIC EXCHANGE', iv, sca
          call flush_unit(stdout)
@@ -1130,10 +1132,11 @@ MODULE exchange_custom
       USE cell_base, ONLY: at, alat, tpiba, omega, tpiba2,bg
       USE constants, ONLY : e2, pi, tpi, fpi, RYTOEV
       USE wavefunctions_module, ONLY : psic
-      USE mp_global, ONLY : mpime, nproc, intra_pool_comm, me_pool
+      USE mp_global, ONLY : intra_pool_comm, me_pool
       USE gvect
       USE mp_wave, ONLY : mergewf,splitwf
       USE mp, ONLY : mp_barrier, mp_sum
+      USE mp_world, ONLY : world_comm, mpime, nproc
 
       IMPLICIT NONE
 
@@ -1176,7 +1179,7 @@ MODULE exchange_custom
 
       exx_cus%fft_g2r%ecutt=ecutwfc
       exx_cus%fft_g2r%dual_t=dual
-      call mp_barrier
+      call mp_barrier( world_comm )
       write(stdout,*) 'Before initialize_fft_custom',exx_cus%fft_g2r%ecutt,exx_cus%fft_g2r%dual_t
       call flush_unit(stdout)
       call initialize_fft_custom(exx_cus%fft_g2r)
@@ -1422,7 +1425,7 @@ MODULE exchange_custom
                    endif
                 enddo
                 n_max=exx_cus%n_loc(iv,is)
-                call mp_sum(n_max)
+                call mp_sum(n_max,world_comm)
                 write(stdout,*) 'Using localized wfcs for exchange:',is,iv,n_max,&
                      &exx_cus%fft_g2r%nr1t*exx_cus%fft_g2r%nr2t*exx_cus%fft_g2r%nr3t
              enddo
@@ -1460,14 +1463,15 @@ MODULE exchange_custom
     SUBROUTINE fock_cus(psi,xpsi,exx_cus)
 !apply Fock operator to a wavefunction
 
-      USE io_global,  ONLY : stdout, ionode, ionode_id
-      USE wvfct,    ONLY : igk, g2kin, npwx, npw, nbnd, nbndx, ecutwfc
+      USE io_global, ONLY : stdout, ionode, ionode_id
+      USE wvfct,     ONLY : igk, g2kin, npwx, npw, nbnd, nbndx, ecutwfc
       USE cell_base, ONLY: at, alat, tpiba, omega, tpiba2,bg
       USE constants, ONLY : e2, pi, tpi, fpi, RYTOEV
       USE wavefunctions_module, ONLY : psic
-      USE mp_global, ONLY : mpime, nproc, intra_pool_comm
       USE gvect
-      USE mp_wave, ONLY : mergewf,splitwf
+      USE mp_pools,  ONLY : intra_pool_comm
+      USE mp_world,  ONLY : mpime, nproc
+      USE mp_wave,   ONLY : mergewf,splitwf
 
 
       IMPLICIT NONE
@@ -1655,6 +1659,7 @@ MODULE exchange_custom
       USE wvfct,    ONLY : igk, g2kin, npwx, npw, nbnd, nbndx, ecutwfc
       USE wavefunctions_module, ONLY : evc
       USE mp, ONLY : mp_sum
+      USE mp_world, ONLY : world_comm
       USE gvect, ONLY : gstart
       USE io_files, ONLY : prefix, nwordwfc,iunwfc
 
@@ -1690,7 +1695,7 @@ MODULE exchange_custom
       enddo
       deallocate(xpsi,psi)
       
-      call mp_sum(exchange_energy_fast)
+      call mp_sum(exchange_energy_fast,world_comm)
       if(exx_cus%nspin==1) then
          exchange_energy_fast=-exchange_energy_fast*exxalpha*2.d0!the 2 is for spin ATTENZIONE
       else
@@ -1704,6 +1709,7 @@ MODULE exchange_custom
       USE wvfct,    ONLY : igk, g2kin, npwx, npw, nbnd, nbndx, ecutwfc,wg
       USE gvect
       USE mp, ONLY : mp_sum
+      USE mp_world, ONLY : world_comm
       
       implicit none
       
@@ -1735,7 +1741,7 @@ MODULE exchange_custom
             sca=sca+2.d0*dble(psi(ig,ii)*conjg(xpsi(ig,ii)))
          enddo
          if(gstart==2) sca=sca-dble(psi(1,ii)*conjg(xpsi(1,ii)))
-         call mp_sum(sca)
+         call mp_sum(sca,world_comm)
          write(stdout,*) 'EXCHANGE FAST',ii, sca
       enddo
       call flush_unit(stdout)

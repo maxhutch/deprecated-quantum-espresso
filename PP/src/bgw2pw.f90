@@ -73,6 +73,7 @@ PROGRAM bgw2pw
   USE kinds, ONLY : DP
   USE mp, ONLY : mp_bcast
   USE mp_global, ONLY : mp_startup
+  USE mp_world, ONLY : world_comm
 
   IMPLICIT NONE
 
@@ -120,15 +121,15 @@ PROGRAM bgw2pw
   ENDIF
 
   tmp_dir = trimcheck ( outdir )
-  CALL mp_bcast ( outdir, ionode_id )
-  CALL mp_bcast ( tmp_dir, ionode_id )
-  CALL mp_bcast ( prefix, ionode_id )
-  CALL mp_bcast ( real_or_complex, ionode_id )
-  CALL mp_bcast ( wfng_flag, ionode_id )
-  CALL mp_bcast ( wfng_file, ionode_id )
-  CALL mp_bcast ( wfng_nband, ionode_id )
-  CALL mp_bcast ( rhog_flag, ionode_id )
-  CALL mp_bcast ( rhog_file, ionode_id )
+  CALL mp_bcast ( outdir, ionode_id, world_comm )
+  CALL mp_bcast ( tmp_dir, ionode_id, world_comm )
+  CALL mp_bcast ( prefix, ionode_id, world_comm )
+  CALL mp_bcast ( real_or_complex, ionode_id, world_comm )
+  CALL mp_bcast ( wfng_flag, ionode_id, world_comm )
+  CALL mp_bcast ( wfng_file, ionode_id, world_comm )
+  CALL mp_bcast ( wfng_nband, ionode_id, world_comm )
+  CALL mp_bcast ( rhog_flag, ionode_id, world_comm )
+  CALL mp_bcast ( rhog_file, ionode_id, world_comm )
 
   CALL read_file ( )
   CALL openfil_pp ( )
@@ -183,8 +184,8 @@ SUBROUTINE write_evc ( input_file_name, real_or_complex, &
   USE klist, ONLY : xk, nks, nkstot
   USE lsda_mod, ONLY : nspin
   USE mp, ONLY : mp_bcast, mp_sum, mp_max, mp_barrier
-  USE mp_global, ONLY : nproc, kunit, npool, my_pool_id, world_comm, &
-    intra_pool_comm
+  USE mp_world, ONLY : world_comm, nproc
+  USE mp_pools, ONLY : kunit, npool, my_pool_id, intra_pool_comm
   USE symm_base, ONLY : s, nsym
   USE xml_io_base, ONLY : create_directory, kpoint_dir, wfc_filename
 #ifdef __PARA
@@ -235,7 +236,7 @@ SUBROUTINE write_evc ( input_file_name, real_or_complex, &
     READ ( iu ) stitle, sdate, stime
   ENDIF
 
-  CALL mp_bcast ( stitle, ionode_id )
+  CALL mp_bcast ( stitle, ionode_id, world_comm )
   f1 = real_or_complex == 1 .AND. stitle(1:8) == 'WFN-Real'
   f2 = real_or_complex == 2 .AND. stitle(1:11) == 'WFN-Complex'
   IF ( ( .NOT. f1 ) .AND. ( .NOT. f2 ) ) &
@@ -250,25 +251,25 @@ SUBROUTINE write_evc ( input_file_name, real_or_complex, &
       ( ( bdot ( j, i ), j = 1, 3 ), i = 1, 3 )
   ENDIF
 
-  CALL mp_bcast ( ns, ionode_id )
-  CALL mp_bcast ( ng, ionode_id )
-  CALL mp_bcast ( ntran, ionode_id )
-  CALL mp_bcast ( cell_symmetry, ionode_id )
-  CALL mp_bcast ( na, ionode_id )
-  CALL mp_bcast ( ecutrho, ionode_id )
-  CALL mp_bcast ( nk, ionode_id )
-  CALL mp_bcast ( nb, ionode_id )
-  CALL mp_bcast ( ngkmax, ionode_id )
-  CALL mp_bcast ( ecutwfn, ionode_id )
-  CALL mp_bcast ( nr, ionode_id )
-  CALL mp_bcast ( celvol, ionode_id )
-  CALL mp_bcast ( al, ionode_id )
-  CALL mp_bcast ( a, ionode_id )
-  CALL mp_bcast ( adot, ionode_id )
-  CALL mp_bcast ( recvol, ionode_id )
-  CALL mp_bcast ( bl, ionode_id )
-  CALL mp_bcast ( b, ionode_id )
-  CALL mp_bcast ( bdot, ionode_id )
+  CALL mp_bcast ( ns, ionode_id, world_comm )
+  CALL mp_bcast ( ng, ionode_id, world_comm )
+  CALL mp_bcast ( ntran, ionode_id, world_comm )
+  CALL mp_bcast ( cell_symmetry, ionode_id, world_comm )
+  CALL mp_bcast ( na, ionode_id, world_comm )
+  CALL mp_bcast ( ecutrho, ionode_id, world_comm )
+  CALL mp_bcast ( nk, ionode_id, world_comm )
+  CALL mp_bcast ( nb, ionode_id, world_comm )
+  CALL mp_bcast ( ngkmax, ionode_id, world_comm )
+  CALL mp_bcast ( ecutwfn, ionode_id, world_comm )
+  CALL mp_bcast ( nr, ionode_id, world_comm )
+  CALL mp_bcast ( celvol, ionode_id, world_comm )
+  CALL mp_bcast ( al, ionode_id, world_comm )
+  CALL mp_bcast ( a, ionode_id, world_comm )
+  CALL mp_bcast ( adot, ionode_id, world_comm )
+  CALL mp_bcast ( recvol, ionode_id, world_comm )
+  CALL mp_bcast ( bl, ionode_id, world_comm )
+  CALL mp_bcast ( b, ionode_id, world_comm )
+  CALL mp_bcast ( bdot, ionode_id, world_comm )
 
   IF ( ns .NE. nspin ) CALL errore ( 'write_evc', 'ns', 1 )
   IF ( ng .NE. ngm_g ) CALL errore ( 'write_evc', 'ng', 1 )
@@ -353,11 +354,11 @@ SUBROUTINE write_evc ( input_file_name, real_or_complex, &
     ENDDO
   ENDIF
 
-  CALL mp_bcast ( ngk, ionode_id )
-  CALL mp_bcast ( k, ionode_id )
-  CALL mp_bcast ( en, ionode_id )
-  CALL mp_bcast ( oc, ionode_id )
-  CALL mp_bcast ( gvec, ionode_id )
+  CALL mp_bcast ( ngk, ionode_id, world_comm )
+  CALL mp_bcast ( k, ionode_id, world_comm )
+  CALL mp_bcast ( en, ionode_id, world_comm )
+  CALL mp_bcast ( oc, ionode_id, world_comm )
+  CALL mp_bcast ( gvec, ionode_id, world_comm )
 
   fg = 0
   DO ig = 1, ngm
@@ -395,7 +396,7 @@ SUBROUTINE write_evc ( input_file_name, real_or_complex, &
       ENDDO
     ENDIF
 #ifdef __PARA
-    CALL mp_barrier ( )
+    CALL mp_barrier ( world_comm )
     CALL MPI_Scatter ( gk_buf, 3 * ngkdist_l, MPI_INTEGER, &
     gk_dist, 3 * ngkdist_l, MPI_INTEGER, &
     ionode_id, world_comm, ierr )
@@ -448,7 +449,7 @@ SUBROUTINE write_evc ( input_file_name, real_or_complex, &
       ENDIF
 #ifdef __PARA
       DO is = 1, ns
-        CALL mp_barrier ( )
+        CALL mp_barrier ( world_comm )
         CALL MPI_Scatter ( wfng_buf ( :, is ), ngkdist_l, MPI_DOUBLE_COMPLEX, &
         wfng_dist ( :, ib, is, ik ), ngkdist_l, MPI_DOUBLE_COMPLEX, &
         ionode_id, world_comm, ierr )
@@ -489,7 +490,7 @@ SUBROUTINE write_evc ( input_file_name, real_or_complex, &
     DEALLOCATE ( wfngc )
   ENDIF
 
-  CALL mp_bcast ( ngk, ionode_id )
+  CALL mp_bcast ( ngk, ionode_id, world_comm )
 
   nkbl = nkstot / kunit
   nkl = kunit * ( nkbl / npool )
@@ -514,7 +515,7 @@ SUBROUTINE write_evc ( input_file_name, real_or_complex, &
     ENDDO
   ENDDO
   DEALLOCATE ( itmp )
-  CALL mp_max ( npw_g )
+  CALL mp_max ( npw_g, world_comm )
 
   CALL create_directory ( output_dir_name )
   DO ik = 1, nk
@@ -551,7 +552,7 @@ SUBROUTINE write_evc ( input_file_name, real_or_complex, &
       CALL iotk_write_dat ( iu, "K-POINT_COORDS", k ( :, ik ), ATTR = attr )
     ENDIF
 #ifdef __PARA
-    CALL mp_barrier ( )
+    CALL mp_barrier ( world_comm )
     CALL MPI_Gather ( igk_dist ( :, ik ) , ngkdist_l, MPI_INTEGER, &
     igk_buf, ngkdist_l, MPI_INTEGER, &
     ionode_id, world_comm, ierr )
@@ -609,7 +610,7 @@ SUBROUTINE write_evc ( input_file_name, real_or_complex, &
       ENDIF
       DO ib = 1, nb
 #ifdef __PARA
-        CALL mp_barrier ( )
+        CALL mp_barrier ( world_comm )
         CALL MPI_Gather ( wfng_dist ( :, ib, is, ik ), ngkdist_l, MPI_DOUBLE_COMPLEX, &
         wfng_buf ( :, is ), ngkdist_l, MPI_DOUBLE_COMPLEX, &
         ionode_id, world_comm, ierr )
@@ -636,7 +637,7 @@ SUBROUTINE write_evc ( input_file_name, real_or_complex, &
   DEALLOCATE ( wfng_buf )
   DEALLOCATE ( wfng_dist )
 
-  CALL mp_barrier ( )
+  CALL mp_barrier ( world_comm )
 
   RETURN
 
@@ -662,7 +663,8 @@ SUBROUTINE write_cd ( input_file_name, real_or_complex, output_dir_name )
   USE kinds, ONLY : DP
   USE lsda_mod, ONLY : nspin
   USE mp, ONLY : mp_bcast, mp_sum
-  USE mp_global, ONLY : intra_pool_comm
+  USE mp_pools, ONLY : intra_pool_comm
+  USE mp_world, ONLY : world_comm
   USE scf, ONLY : rho
   USE symm_base, ONLY : s, nsym
   USE wavefunctions_module, ONLY : psic
@@ -699,7 +701,7 @@ SUBROUTINE write_cd ( input_file_name, real_or_complex, output_dir_name )
     READ ( iu ) stitle, sdate, stime
   ENDIF
 
-  CALL mp_bcast ( stitle, ionode_id )
+  CALL mp_bcast ( stitle, ionode_id, world_comm )
   f1 = real_or_complex == 1 .AND. stitle(1:8) == 'RHO-Real'
   f2 = real_or_complex == 2 .AND. stitle(1:11) == 'RHO-Complex'
   IF ( ( .NOT. f1 ) .AND. ( .NOT. f2 ) ) &
@@ -714,21 +716,21 @@ SUBROUTINE write_cd ( input_file_name, real_or_complex, output_dir_name )
       ( ( bdot ( j, i ), j = 1, 3 ), i = 1, 3 )
   ENDIF
 
-  CALL mp_bcast ( ns, ionode_id )
-  CALL mp_bcast ( ng, ionode_id )
-  CALL mp_bcast ( ntran, ionode_id )
-  CALL mp_bcast ( cell_symmetry, ionode_id )
-  CALL mp_bcast ( na, ionode_id )
-  CALL mp_bcast ( ecutrho, ionode_id )
-  CALL mp_bcast ( nr, ionode_id )
-  CALL mp_bcast ( celvol, ionode_id )
-  CALL mp_bcast ( al, ionode_id )
-  CALL mp_bcast ( a, ionode_id )
-  CALL mp_bcast ( adot, ionode_id )
-  CALL mp_bcast ( recvol, ionode_id )
-  CALL mp_bcast ( bl, ionode_id )
-  CALL mp_bcast ( b, ionode_id )
-  CALL mp_bcast ( bdot, ionode_id )
+  CALL mp_bcast ( ns, ionode_id, world_comm )
+  CALL mp_bcast ( ng, ionode_id, world_comm )
+  CALL mp_bcast ( ntran, ionode_id, world_comm )
+  CALL mp_bcast ( cell_symmetry, ionode_id, world_comm )
+  CALL mp_bcast ( na, ionode_id, world_comm )
+  CALL mp_bcast ( ecutrho, ionode_id, world_comm )
+  CALL mp_bcast ( nr, ionode_id, world_comm )
+  CALL mp_bcast ( celvol, ionode_id, world_comm )
+  CALL mp_bcast ( al, ionode_id, world_comm )
+  CALL mp_bcast ( a, ionode_id, world_comm )
+  CALL mp_bcast ( adot, ionode_id, world_comm )
+  CALL mp_bcast ( recvol, ionode_id, world_comm )
+  CALL mp_bcast ( bl, ionode_id, world_comm )
+  CALL mp_bcast ( b, ionode_id, world_comm )
+  CALL mp_bcast ( bdot, ionode_id, world_comm )
 
   IF ( ns .NE. nspin ) CALL errore ( 'write_cd', 'ns', 1 )
   IF ( ng .NE. ngm_g ) CALL errore ( 'write_cd', 'ng', 1 )
@@ -812,8 +814,8 @@ SUBROUTINE write_cd ( input_file_name, real_or_complex, output_dir_name )
     ENDDO
   ENDIF
 
-  CALL mp_bcast ( gvec, ionode_id )
-  CALL mp_bcast ( rhog, ionode_id )
+  CALL mp_bcast ( gvec, ionode_id, world_comm )
+  CALL mp_bcast ( rhog, ionode_id, world_comm )
 
   fg = 0
   DO ig = 1, ngm

@@ -20,7 +20,8 @@ subroutine calculate_wing(n_set, orthonorm)
   USE gvect,                ONLY : mill, ngm, gstart,g,ngm_g, ig_l2g
   USE cell_base,            ONLY : tpiba
   USE mp_wave, ONLY : mergewf,splitwf
-  USE mp_global, ONLY : mpime, nproc, intra_pool_comm
+  USE mp_global, ONLY : intra_pool_comm
+  USE mp_world,  ONLY : mpime, nproc, world_comm
   USE wvfct,    ONLY :  npwx, npw
   USE cell_base, ONLY : at,bg
 
@@ -48,7 +49,7 @@ subroutine calculate_wing(n_set, orthonorm)
   INTEGER, ALLOCATABLE :: k2g_ig_l2g(:)
 
   npwx_g=npwx
-  call mp_sum(npwx_g)
+  call mp_sum(npwx_g,world_comm)
 
 !read file .e_head
 
@@ -81,8 +82,8 @@ subroutine calculate_wing(n_set, orthonorm)
    endif
 
 
-   call mp_bcast(n_g, ionode_id)
-   call mp_bcast(omega_g, ionode_id)
+   call mp_bcast(n_g, ionode_id,world_comm)
+   call mp_bcast(omega_g, ionode_id,world_comm)
    allocate(freqs(n_g+1))
 
    if(ionode) then
@@ -94,8 +95,8 @@ subroutine calculate_wing(n_set, orthonorm)
   call flush_unit(stdout)
 
 
-   call mp_bcast(freqs(:), ionode_id)
-   call mp_bcast(ngm_k, ionode_id)
+   call mp_bcast(freqs(:), ionode_id,world_comm)
+   call mp_bcast(ngm_k, ionode_id,world_comm)
 
    allocate(e_head_g0(ngm_k))
    allocate(e_head(npw, n_g+1,3)) 
@@ -108,7 +109,7 @@ subroutine calculate_wing(n_set, orthonorm)
       !     do ig=1,ngm_k
       !        sca=sca+dble(e_head_g0(ig)*conjg(e_head_g0(ig)))
       !     enddo
-      !     call mp_sum(sca)
+      !     call mp_sum(sca,world_comm)
       !     write(stdout,*) 'POLA SCA0',ii, sca,ngm_k
 
            call splitwf(e_head(:, ii,ipol),e_head_g0,npw,k2g_ig_l2g,mpime,nproc,ionode_id,intra_pool_comm) 
@@ -118,7 +119,7 @@ subroutine calculate_wing(n_set, orthonorm)
       !        sca=sca+2.d0*dble(e_head(ig, ii,ipol)*conjg(e_head(ig, ii,ipol)))
       !     enddo
       !     if(gstart==2) sca=sca -dble(e_head(1, ii,ipol)*conjg(e_head(1, ii,ipol)))
-      !     call mp_sum(sca)
+      !     call mp_sum(sca,world_comm)
       !     write(stdout,*) 'POLA SCA',ii, sca,npw
         enddo
     enddo
@@ -170,7 +171,7 @@ subroutine calculate_wing(n_set, orthonorm)
 !                  sca=sca+2.d0*real(tmpspacei(ig,iw-(iiw-1)*n_set)*conjg(e_head(ig,i,ipol)))*fact(ig)
                    sca=sca+2.d0*dble((tmpspacei(ig,iw-(iiw-1)*n_set))*conjg(e_head(ig,i,ipol)))!*fact(ig)!ATTENZIONE
                enddo
-               call mp_sum(sca)
+               call mp_sum(sca,world_comm)
                wing(iw,i,ipol)=sca
 
 

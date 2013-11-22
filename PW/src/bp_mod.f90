@@ -12,6 +12,7 @@ MODULE bp
   ! ... The variables needed for the Berry phase polarization calculation
   !
   USE kinds, ONLY: DP
+  USE becmod, ONLY : bec_type
   !
   SAVE
   PRIVATE
@@ -39,8 +40,9 @@ MODULE bp
                      ! wavefunctions for  storing projectors for  electric field operator
   COMPLEX(DP), ALLOCATABLE, TARGET :: fact_hepsi(:,:)
                      ! factors for hermitean electric field operators
-  COMPLEX(DP), ALLOCATABLE, TARGET :: bec_evcel(:,:) 
-                     !for storing bec's factors with evcel
+  !COMPLEX(DP), ALLOCATABLE, TARGET :: bec_evcel(:,:) 
+  !                   !for storing bec's factors with evcel
+  TYPE(bec_type) :: bec_evcel
   INTEGER, ALLOCATABLE, TARGET :: mapgp_global(:,:)
                      ! map for G'= G+1 correspondence
   INTEGER, ALLOCATABLE, TARGET :: mapgm_global(:,:)
@@ -101,6 +103,7 @@ CONTAINS
     !this subroutine sets up the global correspondence map G+1 and G-1
 
     USE mp,                   ONLY : mp_sum
+    USE mp_world,             ONLY : world_comm
     USE gvect,                ONLY : ngm_g, g, ngm, ig_l2g
     USE fft_base,             ONLY : dfftp
     USE cell_base,            ONLY : at
@@ -126,7 +129,7 @@ CONTAINS
        mk3=nint(g(1,ig)*at(1,3)+g(2,ig)*at(2,3)+g(3,ig)*at(3,3))
        ln_g(mk1,mk2,mk3)=ig_l2g(ig)
     ENDDO
-    CALL mp_sum(ln_g(:,:,:))
+    CALL mp_sum(ln_g(:,:,:),world_comm)
 
 
     g_ln(:,:)= 0!it means also not found
@@ -138,7 +141,7 @@ CONTAINS
        g_ln(2,ig_l2g(ig))=mk2
        g_ln(3,ig_l2g(ig))=mk3
     ENDDO
-    CALL mp_sum(g_ln(:,:))
+    CALL mp_sum(g_ln(:,:),world_comm)
 
 !loop on direction
     DO idir=1,3

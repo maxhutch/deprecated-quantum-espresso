@@ -20,7 +20,9 @@ PROGRAM pw2gw
   USE io_files,   ONLY : prefix, outdir, tmp_dir
   USE io_global,  ONLY : ionode, ionode_id
   USE mp,         ONLY : mp_bcast
-  USE mp_global,  ONLY : kunit, nproc, mp_startup
+  USE mp_world,   ONLY : world_comm, nproc
+  USE mp_global,  ONLY : mp_startup
+  USE mp_pools,   ONLY : kunit
   USE environment,ONLY : environment_start
   USE us,         ONLY : spline_ps
   !
@@ -59,15 +61,15 @@ PROGRAM pw2gw
      !
   ENDIF
   !
-  CALL mp_bcast( ios, ionode_id )
+  CALL mp_bcast( ios, ionode_id, world_comm )
   IF (ios /= 0)   CALL errore('pw2gw', 'reading inputpp namelist', abs(ios))
   !
   ! ... Broadcast variables
   !
-  CALL mp_bcast( prefix, ionode_id )
-  CALL mp_bcast(tmp_dir, ionode_id )
-  CALL mp_bcast( what, ionode_id )
-  CALL mp_bcast( use_gmaps, ionode_id )
+  CALL mp_bcast( prefix, ionode_id, world_comm )
+  CALL mp_bcast(tmp_dir, ionode_id, world_comm )
+  CALL mp_bcast( what, ionode_id, world_comm )
+  CALL mp_bcast( use_gmaps, ionode_id, world_comm )
   !
 
   spline_ps = .false.
@@ -75,7 +77,7 @@ PROGRAM pw2gw
   CALL read_file
   CALL openfil_pp
   !
-  CALL mp_bcast(spline_ps, ionode_id)
+  CALL mp_bcast(spline_ps, ionode_id, world_comm)
 #if defined __MPI
   kunittmp = kunit
 #else
@@ -113,9 +115,10 @@ SUBROUTINE compute_gw( use_gmaps )
   USE lsda_mod,      ONLY : nspin
   USE io_files,      ONLY : nwordwfc, iunwfc
   USE wavefunctions_module, ONLY : evc, psic
-  USE mp_global, ONLY : mpime, kunit, nproc, intra_image_comm, npool
+  USE mp_global, ONLY : intra_image_comm, npool
   USE io_global, ONLY : ionode, ionode_id
   USE mp,        ONLY : mp_sum , mp_max
+  USE mp_world,  ONLY : world_comm, mpime, nproc
   USE mp_wave,   ONLY : mergewf
   USE parallel_include
   USE scf,       ONLY : rho, rho_core, rhog_core
@@ -330,12 +333,12 @@ SUBROUTINE compute_gw( use_gmaps )
   ENDDO
 
   igwxx = maxval( ig_l2g( 1:ngw ) )
-  CALL mp_max( igwxx )
+  CALL mp_max( igwxx, world_comm )
   IF (ionode) WRITE(*,*) "NDIMCP = ", igwxx
 
   igwx_p = 0
   igwx_p( mpime + 1 ) = igwx
-  CALL mp_sum( igwx_p )
+  CALL mp_sum( igwx_p, world_comm )
 
   IF( mpime == 0 ) THEN
      !
@@ -701,7 +704,7 @@ SUBROUTINE compute_gw( use_gmaps )
                     rhotwx(3) = rhotwx(3) + xkgk(3) * ctemp
                  ENDDO
 
-                 CALL mp_sum( rhotwx )
+                 CALL mp_sum( rhotwx, world_comm )
 
                  IF (mpime == 0) THEN
                     rrhotwx(1)=tpiba2* real(rhotwx(1)*conjg(rhotwx(1)))
@@ -754,7 +757,7 @@ SUBROUTINE compute_gw( use_gmaps )
          ENDDO
  ! PG: this is the correct integral - 27/8/2010
          vxcdiag = vxcdiag * rytoev / (dfftp%nr1*dfftp%nr2*dfftp%nr3)
-         CALL mp_sum( vxcdiag ) !, intra_pool_comm )
+         CALL mp_sum( vxcdiag, world_comm ) !, intra_pool_comm )
          ! ONLY FOR DEBUG!
          !IF (norma /= 1.0) THEN
          !   WRITE(*,*) "norma =", norma
@@ -846,9 +849,10 @@ SUBROUTINE write_gmaps ( kunit)
   USE wavefunctions_module,  ONLY : evc
   USE io_files,  ONLY : nd_nmbr, tmp_dir, prefix, iunwfc, nwordwfc
   USE io_global, ONLY : ionode
-  USE mp_global, ONLY : nproc, nproc_pool, mpime
-  USE mp_global, ONLY : my_pool_id, my_image_id, intra_pool_comm
+  USE mp_images, ONLY : my_image_id
+  USE mp_global, ONLY : nproc_pool, my_pool_id, my_image_id, intra_pool_comm
   USE mp,        ONLY : mp_sum, mp_max
+  USE mp_world,  ONLY : world_comm, nproc, mpime
 
 
   IMPLICIT NONE
@@ -926,11 +930,11 @@ SUBROUTINE write_gmaps ( kunit)
   ALLOCATE( ngk_gw( nkstot/nspin ) )
   ngk_g = 0
   ngk_g( iks:ike ) = ngk( 1:nks )
-  CALL mp_sum( ngk_g )
+  CALL mp_sum( ngk_g, world_comm )
 
   ! compute the Maximum G vector index among all G+k an processors
   npw_g = maxval( ig_l2g(:) ) ! ( igk_l2g(:,:) )
-  CALL mp_max( npw_g )
+  CALL mp_max( npw_g, world_comm )
 
   ! compute the Maximum number of G vector among all k points
   npwx_g = maxval( ngk_g( 1:nkstot ) )
@@ -947,7 +951,7 @@ SUBROUTINE write_gmaps ( kunit)
         itmp( ig_l2g( ig ), 1 ) = ig_l2g( ig )
       ENDDO
     ENDIF
-    CALL mp_sum( itmp )
+    CALL mp_sum( itmp, world_comm )
     ngg = 0
     DO  ig = 1, npw_g
       IF( itmp( ig, 1 ) == ig ) THEN

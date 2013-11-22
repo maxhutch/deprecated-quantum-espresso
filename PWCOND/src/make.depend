@@ -39,6 +39,7 @@ do_cond.o : ../../Modules/io_global.o
 do_cond.o : ../../Modules/ions_base.o
 do_cond.o : ../../Modules/mp.o
 do_cond.o : ../../Modules/mp_global.o
+do_cond.o : ../../Modules/mp_world.o
 do_cond.o : ../../Modules/noncol.o
 do_cond.o : ../../Modules/paw_variables.o
 do_cond.o : ../../Modules/recvec.o
@@ -96,7 +97,8 @@ local.o : ../../Modules/io_files.o
 local.o : ../../Modules/io_global.o
 local.o : ../../Modules/kind.o
 local.o : ../../Modules/mp.o
-local.o : ../../Modules/mp_global.o
+local.o : ../../Modules/mp_pools.o
+local.o : ../../Modules/mp_world.o
 local.o : ../../Modules/noncol.o
 local.o : ../../Modules/parallel_include.o
 local.o : condcom.o
@@ -126,11 +128,12 @@ poten.o : ../../Modules/fft_base.o
 poten.o : ../../Modules/fft_scalar.o
 poten.o : ../../Modules/io_global.o
 poten.o : ../../Modules/mp.o
+poten.o : ../../Modules/mp_world.o
 poten.o : ../../Modules/noncol.o
 poten.o : ../../PW/src/scf_mod.o
 poten.o : condcom.o
 print_clock_pwcond.o : ../../Modules/io_global.o
-print_clock_pwcond.o : ../../Modules/mp_global.o
+print_clock_pwcond.o : ../../Modules/mp_world.o
 print_clock_pwcond.o : condcom.o
 realus_scatt.o : ../../Modules/cell_base.o
 realus_scatt.o : ../../Modules/constants.o
@@ -144,7 +147,8 @@ realus_scatt.o : ../../PW/src/realus.o
 realus_scatt.o : ../../PW/src/scf_mod.o
 rotproc.o : ../../Modules/kind.o
 rotproc.o : ../../Modules/mp.o
-rotproc.o : ../../Modules/mp_global.o
+rotproc.o : ../../Modules/mp_pools.o
+rotproc.o : ../../Modules/mp_world.o
 rotproc.o : ../../Modules/noncol.o
 rotproc.o : ../../Modules/parallel_include.o
 rotproc.o : condcom.o

@@ -9,6 +9,7 @@ compute_scf.o : ../../Modules/ions_base.o
 compute_scf.o : ../../Modules/kind.o
 compute_scf.o : ../../Modules/mp.o
 compute_scf.o : ../../Modules/mp_global.o
+compute_scf.o : ../../Modules/mp_world.o
 compute_scf.o : ../../Modules/recvec.o
 compute_scf.o : ../../PW/src/atomic_wfc_mod.o
 compute_scf.o : ../../PW/src/pwcom.o
@@ -36,7 +37,7 @@ input.o : ../../Modules/io_files.o
 input.o : ../../Modules/io_global.o
 input.o : ../../Modules/kind.o
 input.o : ../../Modules/mp.o
-input.o : ../../Modules/mp_global.o
+input.o : ../../Modules/mp_world.o
 input.o : ../../Modules/wrappers.o
 input.o : path_input_parameters_module.o
 input.o : path_variables.o
@@ -46,6 +47,7 @@ neb.o : ../../Modules/environment.o
 neb.o : ../../Modules/io_global.o
 neb.o : ../../Modules/mp.o
 neb.o : ../../Modules/mp_global.o
+neb.o : ../../Modules/mp_world.o
 neb.o : ../../Modules/read_input.o
 neb.o : path_base.o
 neb.o : path_input_parameters_module.o
@@ -62,6 +64,7 @@ path_base.o : ../../Modules/ions_base.o
 path_base.o : ../../Modules/kind.o
 path_base.o : ../../Modules/mp.o
 path_base.o : ../../Modules/mp_global.o
+path_base.o : ../../Modules/mp_world.o
 path_base.o : ../../Modules/random_numbers.o
 path_base.o : path_formats.o
 path_base.o : path_input_parameters_module.o
@@ -88,6 +91,7 @@ path_io_routines.o : ../../Modules/io_global.o
 path_io_routines.o : ../../Modules/ions_base.o
 path_io_routines.o : ../../Modules/kind.o
 path_io_routines.o : ../../Modules/mp.o
+path_io_routines.o : ../../Modules/mp_world.o
 path_io_routines.o : path_formats.o
 path_io_routines.o : path_input_parameters_module.o
 path_io_routines.o : path_io_units_module.o
@@ -99,6 +103,7 @@ path_opt_routines.o : ../../Modules/constants.o
 path_opt_routines.o : ../../Modules/io_global.o
 path_opt_routines.o : ../../Modules/kind.o
 path_opt_routines.o : ../../Modules/mp.o
+path_opt_routines.o : ../../Modules/mp_world.o
 path_opt_routines.o : path_io_units_module.o
 path_opt_routines.o : path_variables.o
 path_read_cards_module.o : ../../Modules/constants.o
@@ -109,11 +114,13 @@ path_read_cards_module.o : path_input_parameters_module.o
 path_read_namelists_module.o : ../../Modules/io_global.o
 path_read_namelists_module.o : ../../Modules/kind.o
 path_read_namelists_module.o : ../../Modules/mp.o
+path_read_namelists_module.o : ../../Modules/mp_world.o
 path_read_namelists_module.o : path_input_parameters_module.o
 path_reparametrisation.o : ../../Modules/basic_algebra_routines.o
 path_reparametrisation.o : ../../Modules/io_global.o
 path_reparametrisation.o : ../../Modules/kind.o
 path_reparametrisation.o : ../../Modules/mp.o
+path_reparametrisation.o : ../../Modules/mp_world.o
 path_reparametrisation.o : ../../Modules/splinelib.o
 path_reparametrisation.o : path_io_units_module.o
 path_reparametrisation.o : path_variables.o

@@ -34,10 +34,10 @@ USE ions_base,          ONLY: na                 !number of atoms within each at
 USE ions_base,          ONLY: ityp               !ityp(i):=type/species of ith atom
 USE ions_base,          ONLY: atm                !atm(j):=name of jth atomic species (3 characters)
 USE kinds,              ONLY: DP                 !double-precision kind (selected_real_kind(14,200))
-USE mp_global,          ONLY: nproc_image        !number of processors
-USE mp_global,          ONLY: me_image           !processor number (0,1,...,nproc_image-1)
-USE mp_global,          ONLY: intra_image_comm   !standard MPI communicator
-USE mp_global,          ONLY: get_ntask_groups   !retrieve number of task groups
+USE mp_images,          ONLY: nproc_image        !number of processors
+USE mp_images,          ONLY: me_image           !processor number (0,1,...,nproc_image-1)
+USE mp_images,          ONLY: intra_image_comm   !standard MPI communicator
+USE mp_world,           ONLY: world_comm         !world communicator, not the same as MPI_COMM_WORLD!
 USE mp,                 ONLY: mp_sum             !MPI collection with sum
 USE parallel_include                             !MPI header
 USE uspp_param,         ONLY: upf                !atomic pseudo-potential data
@@ -527,7 +527,7 @@ PRIVATE :: GetVdWParam
     ! Throughout the remainder of the code, to map the atomic quantities onto the real-space mesh, we will be
     ! utilizing the Taylor series form of linear interpolation, given by:
     !
-    ! 		y(x) = LIA + LIB*(x-x(k))	y'(x) = dLIA + dLIB*(x-x(k)) 
+    !   y(x) = LIA + LIB*(x-x(k))    y'(x) = dLIA + dLIB*(x-x(k)) 
     !
     ! for x(k) <= x <= x(k+1)...
     !
@@ -568,7 +568,7 @@ PRIVATE :: GetVdWParam
   END DO !is
   !
   ! Compute free heteronuclear C6 coefficient matrix...
-  !	C6ABfree(A,B)=[2*C6AAfree(A)*C6AAfree(B)]/[(dpfree(B)/dpfree(A))*C6AAfree(A)+(dpfree(A)/dpfree(B))*C6AAfree(B)]
+  !  C6ABfree(A,B)=[2*C6AAfree(A)*C6AAfree(B)]/[(dpfree(B)/dpfree(A))*C6AAfree(A)+(dpfree(A)/dpfree(B))*C6AAfree(B)]
   !
   DO is=1,nsp
     !
@@ -1258,10 +1258,10 @@ PRIVATE :: GetVdWParam
   !
   ! Collect NsomegaA, NsomegaAr, gomegar, and rhosad over all processors and broadcast...
   !
-  CALL mp_sum(NsomegaA)
-  CALL mp_sum(NsomegaAr)
-  CALL mp_sum(gomegar)
-  CALL mp_sum(rhosad)
+  CALL mp_sum(NsomegaA,world_comm)
+  CALL mp_sum(NsomegaAr,world_comm)
+  CALL mp_sum(gomegar,world_comm)
+  CALL mp_sum(rhosad,world_comm)
   !
   ! Decompose gomegar to gomegaAr to save on memory storage...
   !
@@ -1336,9 +1336,9 @@ PRIVATE :: GetVdWParam
       !
       ! Compute veff integrand and complete dispersion potential (functional derivative of veff(A) wrt charge density)...
       !
-      !		veff(A) = INT [|r-rA|^3*rhoA(|r-rA|)*rhotot(r)/rhosad(r)]
+      !        veff(A) = INT [|r-rA|^3*rhoA(|r-rA|)*rhotot(r)/rhosad(r)]
       !
-      !		dveff(A)/dn(r) = |r-rA|^3*rhoA(|r-rA|)/rhosad(r)
+      !       dveff(A)/dn(r) = |r-rA|^3*rhoA(|r-rA|)/rhosad(r)
       !
       off1=somegaA(iq,1,iproc)+(somegaA(iq,2,iproc)-1)*nr1+(somegaA(iq,3,iproc)-1)*nr1*nr2    !global offset [nr1,nr2,nr3]
       dveffAdn(iq,iproc)=dveffAdn(iq,iproc)/rhosad(off1)
@@ -1362,7 +1362,7 @@ PRIVATE :: GetVdWParam
   !
   ! Collect veff over all processors and broadcast...
   !
-  CALL mp_sum(veff)
+  CALL mp_sum(veff,world_comm)
   !
   CALL stop_clock('tsvdw_veff')
   !
@@ -1713,8 +1713,8 @@ PRIVATE :: GetVdWParam
   !
   ! Collect dveffdR and dveffdh over all processors and broadcast...
   !
-  CALL mp_sum(dveffdR)
-  CALL mp_sum(dveffdh)
+  CALL mp_sum(dveffdR,world_comm)
+  CALL mp_sum(dveffdh,world_comm)
   !
   CALL stop_clock('tsvdw_dveff')
   !
@@ -1780,7 +1780,7 @@ PRIVATE :: GetVdWParam
       vB=(veff(ib)/vfree(ibs))
       !
       ! Effective heteronuclear C6 coefficient matrix...
-      !	C6ABeff(A,B)=(veff(A)/vfree(A))*(veff(B)/vfree(B))*C6ABfree(A,B)
+      ! C6ABeff(A,B)=(veff(A)/vfree(A))*(veff(B)/vfree(B))*C6ABfree(A,B)
       !
       C6ABeff(ia,ib)=(vA*vB)*C6ABfree(ias,ibs) 
       !
@@ -2100,10 +2100,10 @@ PRIVATE :: GetVdWParam
     !
     ! Synchronize n_period contribution from all processors...
     !
-    CALL mp_sum(EtsvdW_period)
-    CALL mp_sum(FtsvdW_period)
-    CALL mp_sum(HtsvdW_period)
-    CALL mp_sum(predveffAdn_period)
+    CALL mp_sum(EtsvdW_period,world_comm)
+    CALL mp_sum(FtsvdW_period,world_comm)
+    CALL mp_sum(HtsvdW_period,world_comm)
+    CALL mp_sum(predveffAdn_period,world_comm)
     !
     ! Increment total quantities...
     !
@@ -2198,7 +2198,7 @@ PRIVATE :: GetVdWParam
   !
   ! Collect UtsvdWA over all processors and broadcast...
   !
-  CALL mp_sum(UtsvdWA)
+  CALL mp_sum(UtsvdWA,world_comm)
   !
   ! Partition out dispersion potential consistent with slabs of the charge density...
   !

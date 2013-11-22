@@ -10,13 +10,14 @@ MODULE mp_global
   !----------------------------------------------------------------------------
   !
   ! ... Wrapper module, for compatibility. Contains a few "leftover" variables
-  ! ... used for checks (all the *_file variables, read from data file) and for
-  ! ... "task groups", plus the routine mp_startup initializing MPI.
+  ! ... used for checks (all the *_file variables, read from data file),
+  ! ... plus the routine mp_startup initializing MPI, plus the
+  ! ... routine mp_global_end stopping MPI.
   ! ... Do not use this module to reference variables (e.g. communicators)
   ! ... belonging to each of the various parallelization levels:
   ! ... use the specific modules instead
   !
-  USE mp_world
+  USE mp_world, ONLY: mp_world_start, mp_world_end
   USE mp_images
   USE mp_pools
   USE mp_pots
@@ -36,15 +37,10 @@ MODULE mp_global
   INTEGER :: nproc_bgrp_file  = 1
   INTEGER :: ntask_groups_file= 1
   !
-  ! ... "task" groups (for band parallelization of FFT)
-  !
-  INTEGER :: ntask_groups = 1  ! number of proc. in an orbital "task group" 
-  PRIVATE :: ntask_groups
-  !
 CONTAINS
   !
   !-----------------------------------------------------------------------
-  SUBROUTINE mp_startup ( start_images )
+  SUBROUTINE mp_startup ( my_world_comm, start_images )
     !-----------------------------------------------------------------------
     ! ... This wrapper subroutine initializes all parallelization levels.
     ! ... If option with_images=.true., processes are organized into images,
@@ -55,15 +51,22 @@ CONTAINS
     !
     USE command_line_options, ONLY : get_command_line, &
         nimage_, npool_, npot_, ndiag_, nband_, ntg_
+    USE parallel_include
+    !
     IMPLICIT NONE
+    INTEGER, INTENT(IN), OPTIONAL :: my_world_comm
     LOGICAL, INTENT(IN), OPTIONAL :: start_images
     LOGICAL :: do_images
+    INTEGER :: my_comm
     !
-    CALL mp_global_start( )
+    my_comm = MPI_COMM_WORLD
+    IF ( PRESENT(my_world_comm) ) my_comm = my_world_comm
+    !
+    CALL mp_world_start( my_comm )
     CALL get_command_line ( )
     !
-    do_images = PRESENT(start_images) 
-    IF ( do_images ) do_images = start_images
+    do_images = .FALSE.
+    IF ( PRESENT(start_images) ) do_images = start_images
     IF ( do_images ) THEN
        CALL mp_start_images ( nimage_, world_comm )
     ELSE
@@ -72,19 +75,19 @@ CONTAINS
     !
     CALL mp_start_pots  ( npot_, intra_image_comm )
     CALL mp_start_pools ( npool_, intra_image_comm )
-    CALL mp_start_bands ( nband_, intra_pool_comm )
-    ntask_groups = ntg_
+    CALL mp_start_bands ( nband_, ntg_, intra_pool_comm )
     CALL mp_start_diag  ( ndiag_, intra_bgrp_comm )
     !
     RETURN
     !
   END SUBROUTINE mp_startup
   !
-  FUNCTION get_ntask_groups()
-     IMPLICIT NONE
-     INTEGER :: get_ntask_groups
-     get_ntask_groups = ntask_groups
-     RETURN
-  END FUNCTION get_ntask_groups
+  !-----------------------------------------------------------------------
+  SUBROUTINE mp_global_end ( )
+    !-----------------------------------------------------------------------
+    !
+    CALL mp_world_end( )
+    !
+  END SUBROUTINE mp_global_end
   !
 END MODULE mp_global

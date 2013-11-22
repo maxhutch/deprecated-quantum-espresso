@@ -8,6 +8,7 @@ fd.o : ../../Modules/ions_base.o
 fd.o : ../../Modules/kind.o
 fd.o : ../../Modules/mp.o
 fd.o : ../../Modules/mp_global.o
+fd.o : ../../Modules/mp_world.o
 fd.o : ../../Modules/recvec.o
 fd.o : ../../PW/src/pwcom.o
 fd.o : ../../PW/src/symm_base.o
@@ -42,4 +43,5 @@ fd_ifc.o : ../../PW/src/symme.o
 stop_pp.o : ../../Modules/control_flags.o
 stop_pp.o : ../../Modules/io_files.o
 stop_pp.o : ../../Modules/mp.o
+stop_pp.o : ../../Modules/mp_world.o
 stop_pp.o : ../../Modules/parallel_include.o

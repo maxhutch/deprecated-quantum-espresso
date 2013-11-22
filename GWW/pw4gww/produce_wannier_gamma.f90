@@ -15,6 +15,7 @@
        USE wvfct,                ONLY : npw
        USE io_global, ONLY : ionode_id
        USE mp, ONLY : mp_barrier, mp_bcast
+       USE mp_world, ONLY : world_comm
        USE io_files, ONLY : prefix, nwordwfc,iunwfc
        USE wvfct,                ONLY : nbnd, et, npwx
        USE io_global,            ONLY : stdout, ionode
@@ -152,7 +153,7 @@
                open( unit=iun, file='bands.dat', status='old',form='formatted')
                read(iun,*) n_gw_states
             endif
-            call mp_bcast(n_gw_states,ionode_id)
+            call mp_bcast(n_gw_states,ionode_id,world_comm)
             allocate(ene_gw(n_gw_states,1))
             if(ionode) then
                do ii=1,n_gw_states
@@ -160,7 +161,7 @@
                enddo
                close(iun)
             endif
-            call mp_bcast(ene_gw(:,1),ionode_id)
+            call mp_bcast(ene_gw(:,1),ionode_id,world_comm)
             ene_gw(:,1)=ene_gw(:,1)/rytoev
             delta_self=ene_gw(n_gw_states,1)-rdumm1/rytoev!offset for all the conduction states above those calculated
 !NOT_TO_BE_INCLUDED_END
@@ -219,8 +220,8 @@
              !write transformation matrix u on file
                if(ionode ) call write_wannier_matrix(e_xc,e_h,is)
                do ii=1,nbnd
-                  call mp_barrier
-                  call mp_bcast(u_trans(:,ii,is),ionode_id)
+                  call mp_barrier( world_comm )
+                  call mp_bcast(u_trans(:,ii,is),ionode_id,world_comm)
                enddo
 !u_trans TO BE BROADCASTED
             enddo
@@ -344,7 +345,7 @@
                     allocate(uterms_tmp(numw_prod))
                     do iw=1,numw_prod
                        if(ionode) read(iunuterms) uterms_tmp(1:iw)
-                       call mp_bcast(uterms_tmp(1:iw), ionode_id)
+                       call mp_bcast(uterms_tmp(1:iw), ionode_id,world_comm)
                        do jw=1,iw
                           uterms(iw,jw)=uterms_tmp(jw)
                           uterms(jw,iw)=uterms(iw,jw)
@@ -362,7 +363,7 @@
                 endif
                 if(l_verbose) write(stdout,*) 'OUT OF RESTART_GWW1',numw_prod
                 call flush_unit(stdout)
-                call mp_barrier
+                call mp_barrier( world_comm )
 
              endif
              
@@ -387,7 +388,7 @@
                      n_list(2)=0
                   endif
                endif
-               call mp_bcast(n_list,ionode_id)
+               call mp_bcast(n_list,ionode_id,world_comm)
                allocate(i_list(max(n_list(1),n_list(2)),2))
                i_list=0
                if(ionode) then
@@ -402,7 +403,7 @@
                      close(iun2)
                   endif
                endif
-               call mp_bcast(i_list,ionode_id)
+               call mp_bcast(i_list,ionode_id,world_comm)
                s_first_state=1
                s_last_state=num_nbnds
             endif
@@ -493,7 +494,7 @@
             !    CALL davcio(evc,2*nwordwfc,iunwfc,1,-1)
             !    CALL dft_exchange(num_nbndv,num_nbnds,nset,e_x)
             !    CALL flush_unit( stdout )
-                   call mp_barrier
+                   call mp_barrier( world_comm )
                    call davcio(evc,2*nwordwfc,iunwfc,is,-1)
                    call start_clock('global_self')
                    if(.not.l_big_system) then

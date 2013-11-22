@@ -5,6 +5,7 @@ bcast_ph_input.o : ../../Modules/io_global.o
 bcast_ph_input.o : ../../Modules/ions_base.o
 bcast_ph_input.o : ../../Modules/mp.o
 bcast_ph_input.o : ../../Modules/mp_global.o
+bcast_ph_input.o : ../../Modules/mp_world.o
 bcast_ph_input.o : ../../Modules/run_info.o
 bcast_ph_input.o : ../../PHonon/PH/phcom.o
 bcast_ph_input.o : ../../PHonon/PH/ramanm.o
@@ -32,7 +33,7 @@ lanczos_k.o : ../../Modules/io_files.o
 lanczos_k.o : ../../Modules/io_global.o
 lanczos_k.o : ../../Modules/kind.o
 lanczos_k.o : ../../Modules/mp.o
-lanczos_k.o : ../../Modules/mp_global.o
+lanczos_k.o : ../../Modules/mp_world.o
 lanczos_k.o : ../../Modules/noncol.o
 lanczos_k.o : ../../Modules/recvec.o
 lanczos_k.o : ../../Modules/uspp.o
@@ -80,7 +81,11 @@ phq_readin.o : ../../Modules/io_global.o
 phq_readin.o : ../../Modules/ions_base.o
 phq_readin.o : ../../Modules/kind.o
 phq_readin.o : ../../Modules/mp.o
+phq_readin.o : ../../Modules/mp_bands.o
 phq_readin.o : ../../Modules/mp_global.o
+phq_readin.o : ../../Modules/mp_images.o
+phq_readin.o : ../../Modules/mp_pools.o
+phq_readin.o : ../../Modules/mp_world.o
 phq_readin.o : ../../Modules/noncol.o
 phq_readin.o : ../../Modules/parameters.o
 phq_readin.o : ../../Modules/paw_variables.o
@@ -107,8 +112,9 @@ solve_head.o : ../../Modules/io_global.o
 solve_head.o : ../../Modules/ions_base.o
 solve_head.o : ../../Modules/kind.o
 solve_head.o : ../../Modules/mp.o
-solve_head.o : ../../Modules/mp_global.o
+solve_head.o : ../../Modules/mp_pools.o
 solve_head.o : ../../Modules/mp_wave.o
+solve_head.o : ../../Modules/mp_world.o
 solve_head.o : ../../Modules/recvec.o
 solve_head.o : ../../Modules/uspp.o
 solve_head.o : ../../Modules/wavefunctions.o

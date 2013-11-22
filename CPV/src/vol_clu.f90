@@ -14,40 +14,33 @@ SUBROUTINE vol_clu(rho_real,rho_g,s_fac,flag)
 ! from the measure of the region of space occupied by the electronic density
 ! above a given threshold
 
-      use kinds,          only: dp
-      use constants,      only: pi
-      use parameters,     only: nsx
-      use cell_base,      only: alat, at, h, omega, tpiba, tpiba2
-      use electrons_base, only: nspin
-      use ions_base,      only: na, nsp, amass
-      use ions_positions, only: tau0
-      use gvect, only: g, gg
-      use gvecs,          only: ngms
-      use gvect,          only: ngm, nl, nlm
-      use cp_main_variables, only: drhor
-      use control_flags,  only: tpre
-      use fft_base,       ONLY : dfftp
+      USE kinds,          ONLY: dp
+      USE constants,      ONLY: pi
+      USE parameters,     ONLY: nsx
+      USE cell_base,      ONLY: alat, at, h, omega, tpiba, tpiba2
+      USE electrons_base, ONLY: nspin
+      USE ions_base,      ONLY: na, nsp, amass
+      USE ions_positions, ONLY: tau0
+      USE gvect,          ONLY: g, gg, ngm, nl, nlm
+      USE gvecs,          ONLY: ngms
+      USE cp_main_variables, only: drhor
+      USE control_flags,  ONLY: tpre
+      USE fft_base,       ONLY: dfftp
       USE fft_interfaces, ONLY: invfft
-      use pres_ai_mod, only: rho_thr, n_cntr, cntr, step_rad, fill_vac, &
+      USE pres_ai_mod,    ONLY: rho_thr, n_cntr, cntr, step_rad, fill_vac, &
      &                       delta_eps, delta_sigma, axis,              &
      &                       abisur, dthr, Surf_t, rho_gaus, v_vol,     &
      &                       posv, xc0, weight, volclu, stress_vol,     &
      &                       surfclu, n_ele, jellium, R_j, h_j, e_j,    &
      &                       nelect, P_ext
-#ifdef __MPI
-      use mp_global, only: nproc, mpime
-      use io_global, only: ionode
-      USE mp,                 ONLY: mp_bcast, mp_sum
-      USE mp_global,          ONLY: intra_bgrp_comm
-#endif
+      USE mp_world,       ONLY: nproc, mpime
+      USE io_global,      ONLY: ionode
+      USE mp,             ONLY: mp_bcast, mp_sum
+      USE mp_bands,       ONLY: intra_bgrp_comm
 
       implicit none
 
-#ifdef __MPI
-      include 'mpif.h'
-#endif
-
-      real(kind=8) dx, dxx, xcc(4500)
+      real(kind=8) dx, dxx, xcc(4800)
       real(kind=8) weight0, wpiu, wmeno, maxr, minr
       real(kind=8) tau00(3), dist
       real(kind=8) rho_real(dfftp%nnr,nspin), rhoc
@@ -105,6 +98,7 @@ SUBROUTINE vol_clu(rho_real,rho_g,s_fac,flag)
 ! We smear the step function defining the volume and approximate its derivative
 ! with a gaussian. Here we sample the integral of this gaussian. It has to 
 ! be done once for ever
+! XXX: using an array for xcc() is a big waste. two scalar variables would do.
       dx = 5.d0*sigma/60.d0
       if (flag.eq.1) then
          dxx = dx/40.d0
@@ -391,13 +385,12 @@ SUBROUTINE vol_clu(rho_real,rho_g,s_fac,flag)
 
       end do
 
-#ifdef __MPI
       call mp_sum(volclu,intra_bgrp_comm)
       call mp_sum(n_ele,intra_bgrp_comm)
       if (jellium) call mp_sum(e_j,intra_bgrp_comm)
       call mp_sum(surfclu,intra_bgrp_comm)
       call mp_sum(dpvdh,intra_bgrp_comm)
-#endif
+
       volclu = volclu * omega / DBLE(dfftp%nr1*dfftp%nr2*dfftp%nr3)
       n_ele = n_ele * omega / DBLE(dfftp%nr1*dfftp%nr2*dfftp%nr3)
       surfclu = surfclu * omega / DBLE(dfftp%nr1*dfftp%nr2*dfftp%nr3) / dthr

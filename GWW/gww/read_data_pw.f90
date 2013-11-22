@@ -20,6 +20,7 @@
     USE io_global,            ONLY : stdout, ionode, ionode_id
     USE basic_structures
     USE mp,                   ONLY : mp_bcast, mp_barrier
+    USE mp_world,             ONLY : world_comm
 
     implicit none
     INTEGER, EXTERNAL :: find_free_unit
@@ -38,8 +39,8 @@
        read(iunu) wu%nums
     endif
 
-    call mp_bcast(wu%nspin, ionode_id)
-    call mp_bcast(wu%nums, ionode_id)
+    call mp_bcast(wu%nspin, ionode_id, world_comm)
+    call mp_bcast(wu%nums, ionode_id, world_comm)
 
 
 !allocate arrays    
@@ -55,7 +56,7 @@
        !write(stdout,*) 'DEBUG:', wu%nspin,wu%nums,wu%nums_occ(is)
        !call flush_unit(stdout)
 
-       call mp_bcast(wu%nums_occ(is), ionode_id)
+       call mp_bcast(wu%nums_occ(is), ionode_id, world_comm)
       
        if(ionode) then
 !read in energies
@@ -70,12 +71,12 @@
           enddo
        endif
 
-       call mp_bcast(wu%ene(:,is), ionode_id)
-       call mp_bcast(wu%ene_xc(:,is), ionode_id)
-       call mp_bcast(wu%ene_lda_h(:,is), ionode_id)
+       call mp_bcast(wu%ene(:,is), ionode_id, world_comm)
+       call mp_bcast(wu%ene_xc(:,is), ionode_id, world_comm)
+       call mp_bcast(wu%ene_lda_h(:,is), ionode_id, world_comm)
        do iw=1,wu%nums
-          call mp_barrier
-          call mp_bcast(wu%umat(:,iw,is), ionode_id)
+          call mp_barrier( world_comm )
+          call mp_bcast(wu%umat(:,iw,is), ionode_id, world_comm)
        enddo
     enddo
     if(ionode) close(iunu)
@@ -91,6 +92,7 @@
     USE constants,            ONLY : eps8
     USE basic_structures
     USE mp,                   ONLY : mp_bcast,mp_barrier
+    USE mp_world,             ONLY : world_comm
 
     implicit none
     INTEGER, EXTERNAL :: find_free_unit
@@ -126,7 +128,7 @@
 
     endif
 
-    call mp_bcast(vp%numpw, ionode_id)
+    call mp_bcast(vp%numpw, ionode_id, world_comm)
 
 !allocate array
     allocate(vp%vmat(vp%numpw,vp%numpw))
@@ -140,8 +142,8 @@
     endif
 
     do iw=1,vp%numpw
-       call mp_barrier
-       call mp_bcast(vp%vmat(:,iw), ionode_id)
+       call mp_barrier( world_comm )
+       call mp_bcast(vp%vmat(:,iw), ionode_id, world_comm)
     enddo
 !check
     if(debug) then
@@ -169,6 +171,7 @@
     USE io_global,            ONLY : stdout, ionode, ionode_id
     USE basic_structures
     USE mp,                   ONLY : mp_bcast, mp_barrier
+    USE mp_world,             ONLY : world_comm
 
     implicit none
     INTEGER, EXTERNAL :: find_free_unit
@@ -192,7 +195,7 @@
        read(iunq) qm%numpw
     endif
 
-    call mp_bcast(qm%numpw, ionode_id)
+    call mp_bcast(qm%numpw, ionode_id, world_comm)
 
 ! allocate array of descriptors
     allocate (qm%wp(qm%numpw))
@@ -201,7 +204,7 @@
     do iw=1,qm%numpw
 
        if(ionode)    read(iunq) qm%wp(iw)%numij
-       call mp_bcast(qm%wp(iw)%numij, ionode_id)
+       call mp_bcast(qm%wp(iw)%numij, ionode_id, world_comm)
        
 !for each descriptor allocates arrays
        allocate(qm%wp(iw)%ij(2,qm%wp(iw)%numij))
@@ -213,8 +216,8 @@
           read(iunq) qm%wp(iw)%ij(2,1:qm%wp(iw)%numij)
           read(iunq) qm%wp(iw)%o(1:qm%wp(iw)%numij)
        end if
-       call mp_bcast(qm%wp(iw)%ij(:,:), ionode_id)
-       call mp_bcast(qm%wp(iw)%o(:), ionode_id)	
+       call mp_bcast(qm%wp(iw)%ij(:,:), ionode_id, world_comm)
+       call mp_bcast(qm%wp(iw)%o(:), ionode_id, world_comm)
     enddo
 
 
@@ -237,6 +240,7 @@
     USE io_global,            ONLY : stdout, ionode, ionode_id
     USE basic_structures,     ONLY : ortho_polaw, free_memory
     USE mp,                   ONLY : mp_bcast, mp_barrier
+    USE mp_world,             ONLY : world_comm
 
     implicit none
     INTEGER, EXTERNAL :: find_free_unit
@@ -255,7 +259,7 @@
 !read in basis length
        read(iunq) op%numpw
     endif
-    call mp_bcast(op%numpw, ionode_id)
+    call mp_bcast(op%numpw, ionode_id, world_comm)
     allocate(op%on_mat(op%numpw,op%numpw))
 
     if(ionode) then
@@ -264,8 +268,8 @@
        enddo
     end if
     do iw=1,op%numpw
-       call mp_barrier
-       call mp_bcast( op%on_mat(:,iw), ionode_id)
+       call mp_barrier( world_comm )
+       call mp_bcast( op%on_mat(:,iw), ionode_id, world_comm)
     enddo
 
     op%inverse=.false.
@@ -282,6 +286,7 @@
     USE io_global,            ONLY : stdout, ionode, ionode_id
     USE basic_structures,     ONLY : wp_psi, free_memory
     USE mp,                   ONLY : mp_bcast
+    USE mp_world,             ONLY : world_comm
 
     implicit none
     INTEGER, EXTERNAL :: find_free_unit
@@ -302,8 +307,8 @@
        read(iunq) wp%numpw
        read(iunq) wp%nums_psi     
     endif
-    call mp_bcast(wp%numpw, ionode_id)
-    call mp_bcast(wp%nums_psi, ionode_id)
+    call mp_bcast(wp%numpw, ionode_id, world_comm)
+    call mp_bcast(wp%nums_psi, ionode_id, world_comm)
     allocate(wp%wwp(wp%numpw,wp%numpw,wp%nums_psi))
 
     do hw=1,wp%nums_psi
@@ -317,7 +322,7 @@
               enddo
            enddo
         endif
-        call mp_bcast( wp%wwp(:,:,hw), ionode_id)
+        call mp_bcast( wp%wwp(:,:,hw), ionode_id, world_comm)
      enddo
 
     if(ionode) close(iunq)
@@ -332,6 +337,7 @@
     USE io_global,            ONLY : stdout, ionode, ionode_id
     USE basic_structures
     USE mp,                   ONLY : mp_bcast, mp_barrier
+    USE mp_world,             ONLY : world_comm
 
     implicit none
     INTEGER, EXTERNAL :: find_free_unit
@@ -352,9 +358,9 @@
        write(*,*) 'read_data_pw_u_prim',wu%nums_prim,wu%nums_occ,wu%nums
     endif
 
-    call mp_bcast(wu%nums_prim, ionode_id)
-    call mp_bcast(wu%nums_occ, ionode_id)
-    call mp_bcast(wu%nums, ionode_id)
+    call mp_bcast(wu%nums_prim, ionode_id, world_comm)
+    call mp_bcast(wu%nums_occ, ionode_id, world_comm)
+    call mp_bcast(wu%nums, ionode_id, world_comm)
 
 !allocate arrays
     allocate(wu%umat(wu%nums_prim,wu%nums_prim))
@@ -367,8 +373,8 @@
     endif
 
     do iw=1,wu%nums_prim
-       call mp_barrier
-       call mp_bcast(wu%umat(:,iw), ionode_id)
+       call mp_barrier( world_comm )
+       call mp_bcast(wu%umat(:,iw), ionode_id, world_comm)
     enddo
 
     if(ionode) close(iunu)
@@ -384,6 +390,7 @@
     USE io_global,            ONLY : stdout, ionode, ionode_id
     USE basic_structures
     USE mp,                   ONLY : mp_bcast, mp_barrier
+    USE mp_world,             ONLY : world_comm
 
     implicit none
     INTEGER, EXTERNAL :: find_free_unit
@@ -408,8 +415,8 @@
        write(*,*) 'read_data_pw_v_pot_prim', vp%numpw_prim,vp%numpw
     endif
 
-    call mp_bcast(vp%numpw, ionode_id)
-    call mp_bcast(vp%numpw_prim, ionode_id)
+    call mp_bcast(vp%numpw, ionode_id, world_comm)
+    call mp_bcast(vp%numpw_prim, ionode_id, world_comm)
 
 !allocate arrays
     allocate(vp%vmat(vp%numpw_prim,vp%numpw))
@@ -424,8 +431,8 @@
     endif
 
     do iw=1,vp%numpw
-       call mp_barrier
-       call mp_bcast(vp%vmat(:,iw), ionode_id)
+       call mp_barrier( world_comm )
+       call mp_bcast(vp%vmat(:,iw), ionode_id, world_comm)
     enddo
 
     if(ionode) then
@@ -438,7 +445,7 @@
     endif
 
 
-    call mp_bcast(vp%ij(:,:), ionode_id)
+    call mp_bcast(vp%ij(:,:), ionode_id, world_comm)
 
     vp%is_parallel=.false.
     vp%numpw_para=vp%numpw
@@ -458,6 +465,7 @@
     USE io_global,            ONLY : stdout, ionode, ionode_id
     USE basic_structures,     ONLY : wp_psi_cutoff_index, free_memory
     USE mp,                   ONLY : mp_bcast
+    USE mp_world,             ONLY : world_comm
 
     implicit none
     INTEGER, EXTERNAL :: find_free_unit
@@ -476,9 +484,9 @@
        read(iuni) wpi%numpwpw
     endif
 
-    call mp_bcast(wpi%numpw, ionode_id)
-    call mp_bcast(wpi%nums_psi, ionode_id)
-    call mp_bcast(wpi%numpwpw, ionode_id)
+    call mp_bcast(wpi%numpw, ionode_id, world_comm)
+    call mp_bcast(wpi%nums_psi, ionode_id, world_comm)
+    call mp_bcast(wpi%numpwpw, ionode_id, world_comm)
     
     allocate(wpi%index(2,wpi%numpwpw))
 
@@ -489,7 +497,7 @@
        close(iuni)
     endif
 
-    call mp_bcast(wpi%index, ionode_id)
+    call mp_bcast(wpi%index, ionode_id, world_comm)
     
     return
   END SUBROUTINE read_data_pw_wp_psi_cutoff_index
@@ -502,6 +510,7 @@
     USE io_global,            ONLY : stdout, ionode, ionode_id
     USE basic_structures,     ONLY : wp_psi_cutoff_index, wp_psi_cutoff_data,free_memory
     USE mp,                   ONLY : mp_bcast
+    USE mp_world,             ONLY : world_comm
 
     implicit none
     INTEGER, EXTERNAL :: find_free_unit
@@ -532,7 +541,7 @@
     endif
 
     do i=1,wp%nums_psi
-       call mp_bcast(wp%wwp(:,i), ionode_id)
+       call mp_bcast(wp%wwp(:,i), ionode_id, world_comm)
     enddo
     
     return
@@ -547,6 +556,7 @@
     USE io_global,            ONLY : stdout, ionode, ionode_id
     USE basic_structures
     USE mp,                   ONLY : mp_bcast
+    USE mp_world,             ONLY : world_comm
 
     implicit none
     INTEGER, EXTERNAL :: find_free_unit
@@ -572,7 +582,7 @@
        close(iunu)
        deallocate(buf)
     endif
-    call mp_bcast(ene_x, ionode_id)
+    call mp_bcast(ene_x, ionode_id,world_comm)
 
 
     return
@@ -586,6 +596,7 @@
     USE io_global,            ONLY : stdout, ionode, ionode_id
     USE basic_structures
     USE mp,                   ONLY : mp_bcast
+    USE mp_world,             ONLY : world_comm
 
     implicit none
     INTEGER, EXTERNAL :: find_free_unit
@@ -613,7 +624,7 @@
        close(iunu)
        deallocate(buf)
     endif
-    call mp_bcast(ene_x_off, ionode_id)
+    call mp_bcast(ene_x_off, ionode_id,world_comm)
 
 
     return
@@ -630,6 +641,7 @@
     USE io_global,            ONLY : stdout, ionode, ionode_id
     USE basic_structures,     ONLY : head_epsilon
     USE mp,                   ONLY : mp_bcast, mp_barrier
+    USE mp_world,             ONLY : world_comm
 
     implicit none
     INTEGER, EXTERNAL :: find_free_unit
@@ -647,8 +659,8 @@
        read(iun) he%n
        read(iun) he%omega
     endif
-    call mp_bcast(he%n, ionode_id)
-    call mp_bcast(he%omega, ionode_id)
+    call mp_bcast(he%n, ionode_id,world_comm)
+    call mp_bcast(he%omega, ionode_id,world_comm)
     allocate(he%freqs(he%n+1))
     allocate(he%head(he%n+1,3))
     if(ionode) then
@@ -658,8 +670,8 @@
        enddo
        close(iun)
     endif
-    call mp_bcast(he%freqs, ionode_id)
-    call mp_bcast(he%head, ionode_id)
+    call mp_bcast(he%freqs, ionode_id,world_comm)
+    call mp_bcast(he%head, ionode_id,world_comm)
     
     
     if(ionode) then
@@ -675,7 +687,7 @@
        endif
        read(iun) he%numpw
     endif
-    call mp_bcast(he%numpw, ionode_id)
+    call mp_bcast(he%numpw, ionode_id,world_comm)
     allocate(he%wing(he%numpw, he%n+1,3))
     allocate(he%wing_c(he%numpw, he%n+1,3))
     
@@ -697,10 +709,10 @@
 !    do i=1,he%n+1
 !       call mp_barrier
 !
-!       call mp_bcast(he%wing(:,i), ionode_id) 
-!      call mp_bcast(he%wing_c(:,i), ionode_id)
+!       call mp_bcast(he%wing(:,i), ionode_id,world_comm)
+!      call mp_bcast(he%wing_c(:,i), ionode_id,world_comm)
 !    enddo
-    call mp_bcast(he%wing, ionode_id)
+    call mp_bcast(he%wing, ionode_id,world_comm)
 
     if(l_gzero) then
        if(ionode) then
@@ -718,7 +730,7 @@
           enddo
           close(iun)
        endif
-       call mp_bcast(he%gzero,ionode_id)
+       call mp_bcast(he%gzero,ionode_id,world_comm)
     else
        allocate(he%gzero(he%numpw))
        he%gzero(1:he%numpw)=0.d0
@@ -735,6 +747,7 @@
     USE io_global,            ONLY : stdout, ionode, ionode_id
     USE basic_structures,     ONLY : cprim_prod,free_memory
     USE mp,                   ONLY : mp_bcast, mp_barrier
+    USE mp_world,             ONLY : world_comm
 
     implicit none
 
@@ -769,7 +782,7 @@
              endif
           endif
        endif
-       call mp_bcast(ok_read, ionode_id)
+       call mp_bcast(ok_read, ionode_id,world_comm)
        if(.not. ok_read) return
     endif
 
@@ -807,9 +820,9 @@
        read(iunsterms) cpp%nums!DIFFERENT MEANING FOR UPPER STATES
        read(iunsterms) cpp%numpw
     endif
-    call mp_bcast(cpp%nums_occ, ionode_id)
-    call mp_bcast(cpp%nums, ionode_id)
-    call mp_bcast(cpp%numpw, ionode_id)
+    call mp_bcast(cpp%nums_occ, ionode_id,world_comm)
+    call mp_bcast(cpp%nums, ionode_id,world_comm)
+    call mp_bcast(cpp%numpw, ionode_id,world_comm)
 
     cpp%nums_cond=cpp%nums-cpp%nums_occ
     if(.not.l_vc .or. l_vcw_overlap .and. .not.l_upper) then
@@ -820,15 +833,15 @@
     cpp%lda=cpp%numpw
     if(.not. l_vc .or. l_vcw_overlap .and. .not.l_upper) then
        do i=1,cpp%nums_cond
-          call mp_barrier
+          call mp_barrier( world_comm )
           if(ionode) read(iunsterms) cpp%cpmat(1:cpp%numpw,i)
-          call mp_bcast(cpp%cpmat(:,i), ionode_id)
+          call mp_bcast(cpp%cpmat(:,i), ionode_id,world_comm)
        enddo
     else
         do i=1,cpp%nums
-           call mp_barrier
+           call mp_barrier( world_comm )
           if(ionode) read(iunsterms) cpp%cpmat(1:cpp%numpw,i)
-          call mp_bcast(cpp%cpmat(:,i), ionode_id)
+          call mp_bcast(cpp%cpmat(:,i), ionode_id,world_comm)
        enddo
     endif
     if(ionode) close(iunsterms)
@@ -848,6 +861,7 @@
     USE io_global,            ONLY : stdout, ionode, ionode_id
     USE basic_structures
     USE mp,                   ONLY : mp_bcast
+    USE mp_world,             ONLY : world_comm
 
     implicit none
     INTEGER, EXTERNAL :: find_free_unit
@@ -866,7 +880,7 @@
           read(iunu) ene_dft_xc(i)
        enddo
     endif
-    call mp_bcast(ene_dft_xc(1:max_i), ionode_id)
+    call mp_bcast(ene_dft_xc(1:max_i), ionode_id, world_comm)
 
 
     return
@@ -880,6 +894,7 @@
     USE io_global,            ONLY : stdout, ionode, ionode_id
     USE basic_structures
     USE mp,                   ONLY : mp_bcast
+    USE mp_world,             ONLY : world_comm
 
     implicit none
     INTEGER, EXTERNAL :: find_free_unit
@@ -904,7 +919,7 @@
        enddo
        close(iunu)
     endif
-    call mp_bcast(ene_dft_xc_off, ionode_id)
+    call mp_bcast(ene_dft_xc_off, ionode_id, world_comm)
 
 
     return
@@ -919,6 +934,7 @@
     USE io_global,            ONLY : stdout, ionode, ionode_id
     USE basic_structures
     USE mp,                   ONLY : mp_bcast
+    USE mp_world,             ONLY : world_comm
 
     implicit none
     INTEGER, EXTERNAL :: find_free_unit
@@ -937,10 +953,10 @@
        read(iunu) us%nums_reduced
     endif
 
-    call mp_bcast(us%nums_tot, ionode_id)
-    call mp_bcast(us%nums, ionode_id)
-    call mp_bcast(us%nums_occ, ionode_id)
-    call mp_bcast(us%nums_reduced, ionode_id)
+    call mp_bcast(us%nums_tot, ionode_id, world_comm)
+    call mp_bcast(us%nums, ionode_id, world_comm)
+    call mp_bcast(us%nums_occ, ionode_id, world_comm)
+    call mp_bcast(us%nums_reduced, ionode_id, world_comm)
     
     allocate(us%ene(us%nums_reduced))
 
@@ -950,7 +966,7 @@
        enddo
        close(iunu)
     endif
-    call mp_bcast(us%ene(:),ionode_id)
+    call mp_bcast(us%ene(:),ionode_id, world_comm)
 
     return
   END SUBROUTINE read_data_pw_upper_states
@@ -962,6 +978,7 @@ SUBROUTINE read_data_pw_vt_mat_lanczos(vtl, ii, prefix, l_pola, ispin)
     USE io_global,            ONLY : stdout, ionode, ionode_id
     USE basic_structures,     ONLY : vt_mat_lanczos,free_memory,initialize_memory
     USE mp,                   ONLY : mp_bcast, mp_barrier, mp_sum
+    USE mp_world,             ONLY : world_comm
 
     implicit none
     
@@ -1009,9 +1026,9 @@ SUBROUTINE read_data_pw_vt_mat_lanczos(vtl, ii, prefix, l_pola, ispin)
     endif
 
 
-    call mp_bcast(vtl%nums_occ,ionode_id)
-    call mp_bcast(vtl%numpw,ionode_id)
-    call mp_bcast(vtl%numl,ionode_id)
+    call mp_bcast(vtl%nums_occ,ionode_id, world_comm)
+    call mp_bcast(vtl%numpw,ionode_id, world_comm)
+    call mp_bcast(vtl%numl,ionode_id, world_comm)
 
 
     allocate(vtl%vt_mat(vtl%numpw,vtl%numl))
@@ -1021,16 +1038,16 @@ SUBROUTINE read_data_pw_vt_mat_lanczos(vtl, ii, prefix, l_pola, ispin)
        enddo
     endif
     do il=offset+1,vtl%numl+offset
-       !call mp_barrier
+       !call mp_barrier( world_comm )
        if(ionode) then
           read(iuntmat) vtl%vt_mat(1:vtl%numpw,il-offset)
        else
           vtl%vt_mat(1:vtl%numpw,il-offset)=0.d0
        endif
-       !call mp_bcast(vtl%vt_mat(:,il),ionode_id)
+       !call mp_bcast(vtl%vt_mat(:,il),ionode_id, world_comm)
        !call mp_sum(vtl%vt_mat(1:vtl%numpw,il))
     enddo
-    call mp_bcast(vtl%vt_mat,ionode_id)
+    call mp_bcast(vtl%vt_mat,ionode_id, world_comm)
     if(ionode) close(iuntmat)
 
 
@@ -1045,6 +1062,7 @@ SUBROUTINE read_data_pw_vt_mat_lanczos(vtl, ii, prefix, l_pola, ispin)
     USE io_global,            ONLY : stdout, ionode, ionode_id
     USE basic_structures,     ONLY : mat_lanczos_full,free_memory,initialize_memory
     USE mp,                   ONLY : mp_bcast, mp_barrier, mp_sum
+    USE mp_world,             ONLY : world_comm
 
     implicit none
 
@@ -1070,8 +1088,8 @@ SUBROUTINE read_data_pw_vt_mat_lanczos(vtl, ii, prefix, l_pola, ispin)
        read(iun) fl%numpw
        read(iun) fl%nums
     endif
-    call mp_bcast(fl%numpw, ionode_id)
-    call mp_bcast(fl%nums, ionode_id)
+    call mp_bcast(fl%numpw, ionode_id, world_comm)
+    call mp_bcast(fl%nums, ionode_id, world_comm)
     allocate(fl%f_mat(fl%numpw,fl%nums,2))
     if(ionode) then
        do iw=1,fl%nums
@@ -1082,7 +1100,7 @@ SUBROUTINE read_data_pw_vt_mat_lanczos(vtl, ii, prefix, l_pola, ispin)
        enddo
        close(iun)
     endif
-    call mp_bcast(fl%f_mat, ionode_id)
+    call mp_bcast(fl%f_mat, ionode_id, world_comm)
 
     return
   END SUBROUTINE read_data_pw_mat_lanczos_full
@@ -1097,6 +1115,7 @@ SUBROUTINE read_data_pw_tt_mat_lanczos(ttl, ii, prefix, l_pola,ispin)
     USE io_global,            ONLY : stdout, ionode, ionode_id
     USE basic_structures,     ONLY : tt_mat_lanczos,free_memory,initialize_memory
     USE mp,                   ONLY : mp_bcast, mp_barrier, mp_sum
+    USE mp_world,             ONLY : world_comm
 
     implicit none
     INTEGER, EXTERNAL :: find_free_unit
@@ -1138,8 +1157,8 @@ SUBROUTINE read_data_pw_tt_mat_lanczos(ttl, ii, prefix, l_pola,ispin)
        read(iuntmat) ttl%ii
     endif
 
-    call mp_bcast(ttl%numt,ionode_id)
-    call mp_bcast(ttl%numl,ionode_id)
+    call mp_bcast(ttl%numt,ionode_id, world_comm)
+    call mp_bcast(ttl%numl,ionode_id, world_comm)
   
 
     allocate(ttl%tt_mat(ttl%numt,ttl%numl))
@@ -1150,10 +1169,10 @@ SUBROUTINE read_data_pw_tt_mat_lanczos(ttl, ii, prefix, l_pola,ispin)
        else
            ttl%tt_mat(1:ttl%numt,il)=0.d0
         endif
-       !call mp_bcast(ttl%tt_mat(:,il),ionode_id)
+       !call mp_bcast(ttl%tt_mat(:,il),ionode_id, world_comm)
         !call mp_sum( ttl%tt_mat(1:ttl%numt,il))
     enddo
-    call mp_bcast(ttl%tt_mat,ionode_id)
+    call mp_bcast(ttl%tt_mat,ionode_id, world_comm)
     if(ionode) close(iuntmat)
 
 
@@ -1168,7 +1187,7 @@ SUBROUTINE read_data_pw_lanczos_chain(lc, ii, prefix, l_pola,ispin)
     USE io_global,            ONLY : stdout, ionode, ionode_id
     USE basic_structures,     ONLY : lanczos_chain,free_memory,initialize_memory
     USE mp,                   ONLY : mp_bcast, mp_barrier, mp_sum
-    USE mp_global,            ONLY : nproc,mpime
+    USE mp_world,             ONLY : nproc,mpime, world_comm
 
     implicit none
     INTEGER, EXTERNAL :: find_free_unit
@@ -1212,8 +1231,8 @@ SUBROUTINE read_data_pw_lanczos_chain(lc, ii, prefix, l_pola,ispin)
        read(iunlc) lc%num_steps
     endif
 
-    call mp_bcast(lc%numt,ionode_id)
-    call mp_bcast(lc%num_steps,ionode_id)
+    call mp_bcast(lc%numt,ionode_id, world_comm)
+    call mp_bcast(lc%num_steps,ionode_id, world_comm)
     
     l_blk= (lc%numt)/nproc   
     if(l_blk*nproc < (lc%numt)) l_blk = l_blk+1
@@ -1230,26 +1249,26 @@ SUBROUTINE read_data_pw_lanczos_chain(lc, ii, prefix, l_pola,ispin)
        do it=1,lc%numt
           tmp_mat(1:lc%numt)=0.d0
           if(ionode) read(iunlc)  tmp_mat(1:lc%numt)
-          call mp_sum(tmp_mat(:))!this should be faster than mp_bcat
+          call mp_sum(tmp_mat(:),world_comm)!this should be faster than mp_bcat
           if(it >= nbegin .and. it <= nend) then
              lc%o_mat(1:lc%numt,is,it-nbegin+1)= tmp_mat(1:lc%numt)
           endif
          ! if(ionode) read(iunlc) lc%o_mat(1:lc%numt,is,it)
          ! call mp_barrier
-         ! call mp_bcast(lc%o_mat(1:lc%numt,is,it),ionode_id)
+         ! call mp_bcast(lc%o_mat(1:lc%numt,is,it),ionode_id, world_comm)
        enddo
     enddo
 
     do it=1,lc%numt
        if(ionode) read(iunlc) lc%d(1:lc%num_steps,it)
-       call mp_barrier
-       call mp_bcast(lc%d(1:lc%num_steps,it),ionode_id)
+       call mp_barrier( world_comm )
+       call mp_bcast(lc%d(1:lc%num_steps,it),ionode_id, world_comm)
     enddo
 
       do it=1,lc%numt
        if(ionode) read(iunlc) lc%f(1:lc%num_steps,it)
-       call mp_barrier
-       call mp_bcast(lc%f(1:lc%num_steps,it),ionode_id)
+       call mp_barrier( world_comm )
+       call mp_bcast(lc%f(1:lc%num_steps,it),ionode_id, world_comm)
     enddo
 
     if(ionode) close(iunlc)
@@ -1326,6 +1345,7 @@ SUBROUTINE read_data_pw_tt_mat_lanczos_single(ttl, ii, prefix, l_pola)
     USE kinds,                ONLY : DP
     USE basic_structures,     ONLY : tt_mat_lanczos,free_memory,initialize_memory
     USE mp,                   ONLY : mp_bcast, mp_barrier
+    USE mp_world,             ONLY : world_comm
 
     implicit none
 
@@ -1382,6 +1402,7 @@ SUBROUTINE read_data_pw_tt_mat_lanczos_single(ttl, ii, prefix, l_pola)
     USE io_global,            ONLY : stdout, ionode, ionode_id
     USE basic_structures,     ONLY : full_prods,free_memory,initialize_memory
     USE mp,                   ONLY : mp_bcast, mp_barrier, mp_sum
+    USE mp_world,             ONLY : world_comm
 
     implicit none
 
@@ -1399,10 +1420,10 @@ SUBROUTINE read_data_pw_tt_mat_lanczos_single(ttl, ii, prefix, l_pola)
        read(iun) fp%numpw
        read(iun) fp%numv
     endif
-    call mp_bcast(fp%nums,ionode_id)
-    call mp_bcast(fp%nbnd, ionode_id)
-    call mp_bcast(fp%numpw, ionode_id)
-    call mp_bcast(fp%numv, ionode_id)
+    call mp_bcast(fp%nums,ionode_id, world_comm)
+    call mp_bcast(fp%nbnd, ionode_id, world_comm)
+    call mp_bcast(fp%numpw, ionode_id, world_comm)
+    call mp_bcast(fp%numv, ionode_id, world_comm)
     allocate(fp%ene_ks(fp%nbnd))
     allocate(fp%gmat(fp%numpw,2,fp%nbnd,fp%nums))
     if(ionode) then
@@ -1417,8 +1438,8 @@ SUBROUTINE read_data_pw_tt_mat_lanczos_single(ttl, ii, prefix, l_pola)
        close(iun)
     endif
 
-    call mp_bcast(fp%ene_ks, ionode_id)
-    call mp_bcast(fp%gmat, ionode_id)
+    call mp_bcast(fp%ene_ks, ionode_id, world_comm)
+    call mp_bcast(fp%gmat, ionode_id, world_comm)
     
     return
   END SUBROUTINE read_data_pw_full_prods
@@ -1429,6 +1450,7 @@ SUBROUTINE read_data_pw_partial_occ(po, prefix, ispin)
   USE kinds,                ONLY : DP
   USE basic_structures,     ONLY : partial_occ,free_memory,initialize_memory
   USE mp,                   ONLY : mp_bcast, mp_barrier
+  USE mp_world,             ONLY : world_comm
   USE io_global,            ONLY : ionode, ionode_id
 
   implicit none
@@ -1451,17 +1473,17 @@ SUBROUTINE read_data_pw_partial_occ(po, prefix, ispin)
      read(iun) po%nums_occ
      read(iun) po%numpw
   endif
-  call mp_bcast(po%nums_occ_min,ionode_id)
-  call mp_bcast(po%nums_occ, ionode_id)
-  call mp_bcast(po%numpw, ionode_id)
+  call mp_bcast(po%nums_occ_min,ionode_id, world_comm)
+  call mp_bcast(po%nums_occ, ionode_id, world_comm)
+  call mp_bcast(po%numpw, ionode_id, world_comm)
   allocate(po%f_occ(po%nums_occ))
   if(ionode) read(iun) po%f_occ(1:po%nums_occ)
-  call mp_bcast(po%f_occ, ionode_id)
+  call mp_bcast(po%f_occ, ionode_id, world_comm)
   allocate(po%ppp_mat(po%numpw,po%nums_occ,po%nums_occ_min+1:po%nums_occ))
   do iv=po%nums_occ_min+1,po%nums_occ
      do jv=1,po%nums_occ
         if(ionode) read(iun) po%ppp_mat(1:po%numpw,jv,iv)
-        call mp_bcast( po%ppp_mat(1:po%numpw,jv,iv),ionode_id)
+        call mp_bcast( po%ppp_mat(1:po%numpw,jv,iv),ionode_id, world_comm)
      enddo
   enddo
   if(ionode) close(iun)
@@ -1476,6 +1498,7 @@ SUBROUTINE read_data_pw_semicore(sc, prefix, ispin)
   USE kinds,                ONLY : DP
   USE basic_structures,     ONLY : semicore,free_memory,initialize_memory
   USE mp,                   ONLY : mp_bcast, mp_barrier
+  USE mp_world,             ONLY : world_comm
   USE io_global,            ONLY : ionode, ionode_id
 
   implicit none
@@ -1496,16 +1519,16 @@ SUBROUTINE read_data_pw_semicore(sc, prefix, ispin)
      endif
      read(iun) sc%n_semicore
   endif
-  call mp_bcast(sc%n_semicore, ionode_id)
+  call mp_bcast(sc%n_semicore, ionode_id, world_comm)
   allocate(sc%en_sc(sc%n_semicore))
   if(ionode) then
      read(iun) sc%en_sc(1:sc%n_semicore)
      read(iun) sc%nums
      read(iun) sc%numpw
   endif
-  call mp_bcast(sc%en_sc,ionode_id)
-  call mp_bcast(sc%nums, ionode_id)
-  call mp_bcast(sc%numpw, ionode_id)
+  call mp_bcast(sc%en_sc,ionode_id, world_comm)
+  call mp_bcast(sc%nums, ionode_id, world_comm)
+  call mp_bcast(sc%numpw, ionode_id, world_comm)
 
   allocate(sc%ppw_mat(sc%numpw,sc%n_semicore,sc%nums))
 
@@ -1518,7 +1541,7 @@ SUBROUTINE read_data_pw_semicore(sc, prefix, ispin)
         enddo
      enddo
   endif
-  call mp_bcast(sc%ppw_mat, ionode_id)
+  call mp_bcast(sc%ppw_mat, ionode_id, world_comm)
 
   deallocate(tmp_prod)
   if(ionode) close(iun)
@@ -1537,6 +1560,7 @@ SUBROUTINE read_data_pw_contour(ct,prefix,ispin,istate)
   USE kinds,                ONLY : DP
   USE basic_structures,     ONLY : contour_terms,free_memory,initialize_memory
   USE mp,                   ONLY : mp_bcast, mp_barrier
+  USE mp_world,             ONLY : world_comm
   USE io_global,            ONLY : ionode, ionode_id
 
   implicit none
@@ -1560,8 +1584,8 @@ SUBROUTINE read_data_pw_contour(ct,prefix,ispin,istate)
      read(iun) ct%nums
      read(iun) ct%numt
   endif
-  call mp_bcast(ct%nums, ionode_id)
-  call mp_bcast(ct%numt, ionode_id)
+  call mp_bcast(ct%nums, ionode_id, world_comm)
+  call mp_bcast(ct%numt, ionode_id, world_comm)
   allocate(ct%cmat(ct%numt,ct%nums))
   if(ionode) then
      do ii=1,ct%nums
@@ -1569,7 +1593,7 @@ SUBROUTINE read_data_pw_contour(ct,prefix,ispin,istate)
      enddo
      close(iun)
   endif
-   call mp_bcast(ct%cmat, ionode_id)
+   call mp_bcast(ct%cmat, ionode_id, world_comm)
 
   return
 !NOT_TO_BE_INCLUDED_END

@@ -20,6 +20,7 @@
    USE green_function,     ONLY : green, free_memory_green, write_green, create_green_part,initialize_green
    USE para_gww,           ONLY : is_my_time
    USE mp,                 ONLY : mp_barrier
+   USE mp_world,           ONLY : world_comm
    USE input_gw,           ONLY : input_options
    USE io_global,          ONLY : stdout, ionode
    USE kinds,              ONLY : DP
@@ -81,7 +82,7 @@
         call free_memory(qm)
     endif
   endif
-  call mp_barrier
+  call mp_barrier( world_comm )
 
   if(.not.options%use_contractions) then
      call free_memory(uu)
@@ -129,6 +130,7 @@ END SUBROUTINE go_exchange_main
    USE polarization
    USE para_gww,             ONLY : is_my_state
    USE mp,                   ONLY : mp_sum
+   USE mp_world,             ONLY : world_comm
    USE constants, ONLY : RYTOEV
 
    implicit none
@@ -328,8 +330,8 @@ END SUBROUTINE go_exchange_main
            write(stdout,*) 'Exchange  energies', i,sene
         endif
      enddo
-     call mp_sum(ene_x(1:options%max_i))
-     if(.not.options%l_lda_hartree)  call mp_sum(ene_h(1:options%max_i))
+     call mp_sum(ene_x(1:options%max_i),world_comm)
+     if(.not.options%l_lda_hartree)  call mp_sum(ene_h(1:options%max_i),world_comm)
   endif
 
     if(.not.options%use_contractions) then

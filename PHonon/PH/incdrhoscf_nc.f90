@@ -28,7 +28,7 @@ subroutine incdrhoscf_nc (drhoscf, weight, ik, dbecsum, dpsi)
   USE wavefunctions_module,  ONLY: evc
   USE qpoint,    ONLY : npwq, igkq, ikks
   USE control_ph, ONLY : nbnd_occ
-  USE mp_global,  ONLY : me_bgrp, inter_bgrp_comm, get_ntask_groups
+  USE mp_bands,   ONLY : me_bgrp, inter_bgrp_comm, ntask_groups
   USE mp,         ONLY : mp_sum
 
   implicit none
@@ -54,17 +54,15 @@ subroutine incdrhoscf_nc (drhoscf, weight, ik, dbecsum, dpsi)
   ! the wavefunctions in real space
   ! the change of wavefunctions in real space
 
-  complex(DP), allocatable  :: tg_psi (:,:), tg_dpsi (:,:), tg_drho(:,:), &
-                          aux(:,:)
+  complex(DP), allocatable  :: tg_psi (:,:), tg_dpsi (:,:), tg_drho(:,:)
 
   integer :: ibnd, jbnd, ikk, ir, ig, incr, v_siz, idx, ioff, ipol
   ! counters
 
   call start_clock ('incdrhoscf')
-  IF (get_ntask_groups() > 1 ) dffts%have_task_groups=.TRUE.
+  IF (ntask_groups > 1 ) dffts%have_task_groups=.TRUE.
   allocate (dpsic(dffts%nnr, npol))
   allocate (psi  (dffts%nnr, npol))
-  allocate (aux(dfftp%nnr,nspin_mag))
   wgt = 2.d0 * weight / omega
   ikk = ikks(ik)
   incr = 1
@@ -153,7 +151,7 @@ subroutine incdrhoscf_nc (drhoscf, weight, ik, dbecsum, dpsi)
         !
         DO ipol=1,nspin_mag
            DO ir = 1, dffts%nnr
-              aux(ir,ipol) = aux(ir,ipol) + tg_drho(ir+ioff,ipol)
+              drhoscf(ir,ipol) = drhoscf(ir,ipol) + tg_drho(ir+ioff,ipol)
            END DO
         END DO
      ELSE
@@ -192,7 +190,6 @@ subroutine incdrhoscf_nc (drhoscf, weight, ik, dbecsum, dpsi)
   enddo
 
   call addusdbec_nc (ik, weight, dpsi, dbecsum)
-  deallocate (aux)
   deallocate (psi)
   deallocate (dpsic)
 

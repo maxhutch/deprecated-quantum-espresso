@@ -25,7 +25,7 @@ MODULE wrappers
   IMPLICIT NONE
   !
   ! C std library functions fortran wrappers:
-  PUBLIC  f_remove, f_link, rename, f_chdir, f_mkdir, f_rmdir, f_getcwd
+  PUBLIC  f_remove, rename, f_chdir, f_mkdir, f_rmdir, f_getcwd
   ! more stuff:
   PUBLIC  f_copy, feval_infix, md5_from_file, f_mkdir_safe
   !
@@ -56,12 +56,6 @@ MODULE wrappers
       INTEGER(c_int)        :: r
     END FUNCTION
     FUNCTION rename(input,output) BIND(C,name="rename") RESULT(r)
-      USE iso_c_binding
-      CHARACTER(kind=c_char),INTENT(in) :: input(*)
-      CHARACTER(kind=c_char),INTENT(in) :: output(*)
-      INTEGER(c_int)        :: r
-    END FUNCTION
-    FUNCTION link(input,output) BIND(C,name="link") RESULT(r)
       USE iso_c_binding
       CHARACTER(kind=c_char),INTENT(in) :: input(*)
       CHARACTER(kind=c_char),INTENT(in) :: output(*)
@@ -114,12 +108,6 @@ CONTAINS
     k= rename(TRIM(input)//C_NULL_CHAR,TRIM(output)//C_NULL_CHAR)
   END FUNCTION
 
-  FUNCTION f_link(input,output) RESULT(k)
-    CHARACTER(*),INTENT(in)  :: input,output
-    INTEGER :: k
-    k= link(TRIM(input)//C_NULL_CHAR,TRIM(output)//C_NULL_CHAR)
-  END FUNCTION
-  
   FUNCTION f_chdir(dirname) RESULT(r)
     CHARACTER(*),INTENT(in)  :: dirname
     INTEGER(c_int) :: r
@@ -155,7 +143,7 @@ CONTAINS
   SUBROUTINE f_getcwd(output)
     CHARACTER(kind=c_char,len=*),INTENT(out) :: output
     TYPE(c_ptr) :: buffer
-    INTEGER(C_LONG) :: length,i
+    INTEGER(C_SIZE_T) :: length,i  ! was kind=C_LONG, which fails on WIN32
     length=LEN(output)
     buffer=getcwd(output,length)
     DO i=1,length

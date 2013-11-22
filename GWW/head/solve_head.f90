@@ -45,20 +45,21 @@ subroutine solve_head
   USE becmod,                ONLY : becp,calbec
   USE uspp_param,            ONLY : nhm
   use phcom
-  USE wannier_gw,            ONLY : n_gauss, omega_gauss, grid_type, nsteps_lanczos,second_grid_n,second_grid_i,&
-                                      &l_scissor,scissor
-  USE control_ph,            ONLY : tr2_ph
-  USE gvect,                 ONLY : ig_l2g
-  USE mp,           ONLY : mp_sum, mp_barrier, mp_bcast
+  USE wannier_gw,           ONLY : n_gauss, omega_gauss, grid_type,&
+                                   nsteps_lanczos,second_grid_n,second_grid_i,&
+                                   l_scissor,scissor
+  USE control_ph,           ONLY : tr2_ph
+  USE gvect,                ONLY : ig_l2g
+  USE mp,                   ONLY : mp_sum, mp_barrier, mp_bcast
+  USE mp_world,             ONLY : world_comm, mpime, nproc
   USE uspp,                 ONLY : nkb, vkb
 !  USE symme, ONLY: s
-  USE mp_global,             ONLY : inter_pool_comm, intra_pool_comm
+  USE mp_pools,             ONLY : inter_pool_comm, intra_pool_comm
   USE symme, only : crys_to_cart, symmatrix
   USE mp_wave, ONLY : mergewf,splitwf
-  USE mp_global, ONLY : mpime, nproc, intra_pool_comm
   USE fft_base,             ONLY : dfftp, dffts
   USE fft_interfaces,       ONLY : fwfft, invfft
-  USE buffers,               ONLY : get_buffer
+  USE buffers,              ONLY : get_buffer
   USE constants,            ONLY : rytoev
 
   implicit none
@@ -311,7 +312,7 @@ subroutine solve_head
                 ps(1,1), nbnd )
 #ifdef __PARA
            !call reduce (2 * nbnd * nbnd_occ (ik), ps)
-           call mp_sum(ps(1:nbnd_occ (ik),1:nbnd_occ (ik)))
+           call mp_sum(ps(1:nbnd_occ (ik),1:nbnd_occ (ik)),world_comm)
 #endif
         ! dpsi is used as work space to store S|evc>
         !
@@ -451,7 +452,7 @@ subroutine solve_head
         do ig=1,ngm
            sca=sca+conjg(tmp_g(ig))*tmp_g(ig)
         enddo
-        call mp_sum(sca)
+        call mp_sum(sca,world_comm)
         write(stdout,*) 'POLA SCA', sca,ngm
 !loop on frequency
         do ig=gstart,ngm
@@ -502,7 +503,7 @@ subroutine solve_head
 
 !calculate total number of G for wave function
   npwx_g=ngm
-  call mp_sum(npwx_g)
+  call mp_sum(npwx_g,world_comm)
   allocate(e_head_g(ngm_g))
 
   if(ionode) then
@@ -514,7 +515,7 @@ subroutine solve_head
      write(iun) npwx_g
    endif
 
-   call mp_barrier
+   call mp_barrier( world_comm )
 
 
    do ipol=1,3
@@ -530,7 +531,7 @@ subroutine solve_head
          endif
       enddo
    enddo
-   call mp_barrier
+   call mp_barrier( world_comm )
    write(stdout,*) 'ATT02'
   if(ionode) close(iun)
 
@@ -565,7 +566,7 @@ subroutine solve_head
  ! endif
  
 
-  call mp_barrier
+  call mp_barrier( world_comm )
   write(stdout,*) 'ATT1'
   
   deallocate(e_head_g)
@@ -584,7 +585,7 @@ subroutine solve_head
   deallocate(e_head_pol)
   
 
-   call mp_barrier
+   call mp_barrier( world_comm )
    write(stdout,*) 'ATT2'
 
   call stop_clock ('solve_head')

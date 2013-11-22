@@ -26,7 +26,8 @@ SUBROUTINE stres_us( ik, gk, sigmanlc )
   USE spin_orb,             ONLY : lspinorb
   USE lsda_mod,             ONLY : nspin
   USE noncollin_module,     ONLY : noncolin, npol
-  USE mp_global,            ONLY : me_pool, root_pool, intra_bgrp_comm
+  USE mp_pools,             ONLY : me_pool, root_pool
+  USE mp_bands,             ONLY : intra_bgrp_comm
   USE becmod,               ONLY : allocate_bec_type, deallocate_bec_type, &
                                    bec_type, becp, calbec
   USE mp,                   ONLY : mp_sum, mp_get_comm_null, mp_circular_shift_left 
@@ -89,8 +90,7 @@ SUBROUTINE stres_us( ik, gk, sigmanlc )
        !
        INTEGER                       :: na, np, ibnd, ipol, jpol, l, i, &
                                         ikb, jkb, ih, jh, ijkb0, ibnd_loc, &
-                                        nproc, mype, nbnd_loc, nbnd_begin, &
-                                        icur_blk, icyc
+                                        nproc, nbnd_loc, nbnd_begin, icyc
        INTEGER, EXTERNAL :: ldim_block, lind_block, gind_block
        REAL(DP)                 :: fac, xyz(3,3), evps, ddot
        REAL(DP), ALLOCATABLE    :: deff(:,:,:)
@@ -103,7 +103,6 @@ SUBROUTINE stres_us( ik, gk, sigmanlc )
        !
        IF( becp%comm /= mp_get_comm_null() ) THEN
           nproc   = becp%nproc
-          mype    = becp%mype
           nbnd_loc   = becp%nbnd_loc
           nbnd_begin = becp%ibnd_begin
           IF( ( nbnd_begin + nbnd_loc - 1 ) > nbnd ) nbnd_loc = nbnd - nbnd_begin + 1
@@ -224,7 +223,6 @@ SUBROUTINE stres_us( ik, gk, sigmanlc )
        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
        DO ipol = 1, 3
           CALL gen_us_dy( ik, xyz(1,ipol), dvkb )
-          icur_blk = mype
                 
           DO icyc = 0, nproc -1
                 

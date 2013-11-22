@@ -17,7 +17,7 @@ subroutine calculate_compact_pola_lanczos(options,ispin)
    USE basic_structures,   ONLY : wannier_u,vt_mat_lanczos,tt_mat_lanczos,initialize_memory,free_memory
    USE lanczos,            ONLY : compact_q_lanczos,initialize_compact_q_lanczos,&
       &free_memory_compact_q_lanczos,do_compact_q_lanczos,write_compact_q_lanczos
-   USE mp_global,          ONLY : nproc,mpime
+   USE mp_world,           ONLY : nproc,mpime
    USE io_global,          ONLY : stdout 
 
   implicit none
@@ -101,7 +101,7 @@ subroutine solve_lanczos(nbuf, alpha,e_mat,lc, l_verbose)
   USE basic_structures, ONLY : lanczos_chain, initialize_memory,free_memory 
   USE io_global,        ONLY : stdout
   USE mp,               ONLY : mp_sum, mp_bcast
-  USE mp_global,        ONLY : nproc,mpime
+  USE mp_world,         ONLY : nproc,mpime,world_comm
 
   implicit none
 
@@ -143,7 +143,7 @@ subroutine solve_lanczos(nbuf, alpha,e_mat,lc, l_verbose)
         if(l_verbose) write(stdout,*) 'proc:', iproc, lc%numt,lc%num_steps,l_blk,nsize
         if(l_verbose)call flush_unit(stdout)
 
-        call mp_bcast(o_mat, iproc)
+        call mp_bcast(o_mat, iproc, world_comm)
         if(l_verbose) write(stdout,*) 'mp_bcast done'
         if(l_verbose)call flush_unit(stdout)
       
@@ -175,7 +175,7 @@ subroutine solve_lanczos(nbuf, alpha,e_mat,lc, l_verbose)
 
           !   call dgemm('N','N',lc%numt,1,lc%num_steps,1.d0,o_mat(1,1,io-nbegin+1),lc%numt,tr(1,io-nbegin+1),lc%num_steps,1.d0,e_mat(1,io,iv),lc%numt)
            enddo
-  	   if(l_verbose) write(stdout,*) 'dgemv done'
+           if(l_verbose) write(stdout,*) 'dgemv done'
            if(l_verbose) call flush_unit(stdout)
 
         enddo!on iv
@@ -194,7 +194,7 @@ subroutine solve_lanczos_fake(lc,l_verbose)
   USE basic_structures, ONLY : lanczos_chain, initialize_memory,free_memory
   USE io_global,        ONLY : stdout
   USE mp,               ONLY : mp_sum,mp_bcast
-  USE mp_global,        ONLY : nproc,mpime
+  USE mp_world,         ONLY : nproc,mpime,world_comm
 
   implicit none
 
@@ -224,7 +224,7 @@ subroutine solve_lanczos_fake(lc,l_verbose)
         endif
         if(l_verbose) write(stdout,*) 'proc:', iproc, lc%numt,lc%num_steps,l_blk,nsize
         if(l_verbose) call flush_unit(stdout)
-        call mp_bcast(o_mat, iproc)
+        call mp_bcast(o_mat, iproc,world_comm)
      endif
   enddo
 
@@ -241,7 +241,7 @@ subroutine do_polarization_lanczos(tf,options,ispin)
   USE input_gw,           ONLY : input_options
   USE lanczos,            ONLY : compact_q_lanczos,initialize_compact_q_lanczos,free_memory_compact_q_lanczos,&
        &read_compact_q_lanczos
-  USE mp_global,          ONLY : nproc,mpime
+  USE mp_world,           ONLY : world_comm, mpime, nproc
   USE basic_structures,   ONLY : wannier_u,lanczos_chain, initialize_memory,free_memory,&
                                  &vt_mat_lanczos,tt_mat_lanczos,partial_occ
   USE io_global,          ONLY : stdout,ionode,ionode_id
@@ -444,10 +444,10 @@ subroutine do_polarization_lanczos(tf,options,ispin)
         endif
      endif
   endif
-  call mp_bcast(off_nbegin,ionode_id)
+  call mp_bcast(off_nbegin,ionode_id,world_comm)
   iw_nbegin=nbegin+off_nbegin
-  call mp_bcast(iv_begin, ionode_id)
-  call mp_bcast(l_do_restart, ionode_id)
+  call mp_bcast(iv_begin, ionode_id,world_comm)
+  call mp_bcast(l_do_restart, ionode_id,world_comm)
 
 
 
@@ -604,10 +604,11 @@ subroutine solve_lanczos_2(numpw,numt,numl,nbuf,mbuf, alpha,lc, iv0,nbndv,&
   USE basic_structures, ONLY : lanczos_chain, initialize_memory,free_memory 
   USE io_global,        ONLY : stdout
   USE mp,               ONLY : mp_sum, mp_bcast
-  USE mp_global,        ONLY : nproc,mpime,world_comm
+  USE mp_world,         ONLY : nproc,mpime,world_comm
   USE parallel_include
-  USE lanczos,          ONLY : compact_q_lanczos,initialize_compact_q_lanczos,free_memory_compact_q_lanczos,&
-       &read_compact_q_lanczos
+  USE lanczos,          ONLY : compact_q_lanczos,initialize_compact_q_lanczos,&
+                               free_memory_compact_q_lanczos, &
+                               read_compact_q_lanczos
 
   USE polarization,     ONLY : polaw
 
@@ -696,7 +697,7 @@ subroutine solve_lanczos_2(numpw,numt,numl,nbuf,mbuf, alpha,lc, iv0,nbndv,&
 !read compact matrix
            iproc_cql=(iv0+iv-2)/l_blk_io
            if(mpime==iproc_cql) qlm_tmp(:,:,iv) = cql_save(:,:,iv0+iv-1-nbegin_io+1)
-           call mp_bcast(qlm_tmp(:,:,iv), iproc_cql)
+           call mp_bcast(qlm_tmp(:,:,iv), iproc_cql,world_comm)
         enddo
      else
         call initialize_compact_q_lanczos(cql)
@@ -744,8 +745,8 @@ subroutine solve_lanczos_2(numpw,numt,numl,nbuf,mbuf, alpha,lc, iv0,nbndv,&
            vtl_tmp(:,:,iv) = vtl_save(:,:,iv0+iv-1-nbegin_io+1)
            ttl_tmp(:,:,iv) = ttl_save(:,:,iv0+iv-1-nbegin_io+1)
         endif
-        call mp_bcast(vtl_tmp(:,:,iv), iproc_cql)
-        call mp_bcast(ttl_tmp(:,:,iv), iproc_cql)
+        call mp_bcast(vtl_tmp(:,:,iv), iproc_cql,world_comm)
+        call mp_bcast(ttl_tmp(:,:,iv), iproc_cql,world_comm)
      enddo
 
 
@@ -779,11 +780,11 @@ subroutine solve_lanczos_2(numpw,numt,numl,nbuf,mbuf, alpha,lc, iv0,nbndv,&
      if(iproc==mpime) nbuf_ip=nbuf
 !distribute number of nbuf
 !distribute af
-     call mp_bcast(nbuf_ip, iproc)
+     call mp_bcast(nbuf_ip, iproc,world_comm)
      if(nbuf_ip >0) then
         allocate(alpha_ip(nbuf_ip))
         if(iproc==mpime) alpha_ip(:)=alpha(:)
-        call mp_bcast(alpha_ip,iproc)
+        call mp_bcast(alpha_ip,iproc,world_comm)
         !loop on freuqency
         pw_ip(:,:)=0.d0
         do iv=1,nbuf_ip
