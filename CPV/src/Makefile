@@ -46,6 +46,7 @@ input.o \
 ions_nose.o \
 ions_positions.o \
 ksstates.o \
+ldaU_cp.o \
 ldaU.o \
 ldaUpen.o \
 mainvar.o \
@@ -85,7 +86,6 @@ spline.o \
 spinsq.o \
 stop_run.o \
 stress.o \
-tsvdw.o \
 vol_clu.o \
 vofrho.o \
 wannier_base.o \

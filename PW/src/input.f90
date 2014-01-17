@@ -16,7 +16,6 @@ SUBROUTINE iosys()
   ! ...  those in input_parameters, are locally renamed by adding a "_"
   !
   USE kinds,         ONLY : DP
-  USE uspp,          ONLY : okvan
   USE funct,         ONLY : dft_has_finite_size_correction, &
                             set_finite_size_volume, get_inlc 
   USE funct,         ONLY: set_exx_fraction, set_screening_parameter
@@ -32,6 +31,9 @@ SUBROUTINE iosys()
   USE bp,            ONLY : nppstr_    => nppstr, &
                             gdir_      => gdir, &
                             lberry_    => lberry, &
+                            lcalc_z2_  => lcalc_z2, &
+                            z2_m_threshold_ => z2_m_threshold, &
+                            z2_z_threshold_ => z2_z_threshold, &
                             lelfield_  => lelfield, &
                             lorbm_     => lorbm, &
                             efield_    => efield, &
@@ -146,8 +148,8 @@ SUBROUTINE iosys()
                             io_level, ethr, lscf, lbfgs, lmd, &
                             ldamped, lbands, llang, use_SMC,  &
                             lconstrain, restart, twfcollect, &
-                            llondon, ts_vdw, do_makov_payne, &
-                            lxdm, &
+                            llondon, do_makov_payne, lxdm, &
+                            ts_vdw_           => ts_vdw, &
                             lecrpa_           => lecrpa, &
                             smallmem
   USE control_flags, ONLY: scf_must_converge_ => scf_must_converge
@@ -201,7 +203,8 @@ SUBROUTINE iosys()
                                pseudo_dir, disk_io, tefield, dipfield, lberry, &
                                gdir, nppstr, wf_collect,lelfield,lorbm,efield, &
                                nberrycyc, lkpoint_dir, efield_cart, lecrpa,    &
-                               vdw_table_name, memory, tqmmm
+                               vdw_table_name, memory, tqmmm,                  &
+                               lcalc_z2, z2_m_threshold, z2_z_threshold
 
   !
   ! ... SYSTEM namelist
@@ -230,7 +233,7 @@ SUBROUTINE iosys()
                                B_field, fixed_magnetization, report, lspinorb,&
                                starting_spin_angle, assume_isolated,spline_ps,&
                                vdw_corr, london, london_s6, london_rcut,      &
-                               ts_vdw_isolated, ts_vdw_econv_thr,             &
+                               ts_vdw, ts_vdw_isolated, ts_vdw_econv_thr,     &
                                xdm, xdm_a1, xdm_a2,                           &
                                one_atom_occupations,                          &
                                esm_bc, esm_efield, esm_w, esm_nfit
@@ -290,7 +293,8 @@ SUBROUTINE iosys()
   USE read_namelists_module, ONLY : read_namelists, sm_not_set
   USE london_module,         ONLY : init_london, lon_rcut, scal6
   USE xdm_module,            ONLY : init_xdm, a1i, a2i
-  USE us, ONLY : spline_ps_ => spline_ps
+  USE tsvdw_module,          ONLY : vdw_isolated, vdw_econv_thr
+  USE us,                    ONLY : spline_ps_ => spline_ps
   !
   USE input_parameters,       ONLY : deallocate_input_parameters
   !
@@ -1038,8 +1042,6 @@ SUBROUTINE iosys()
   IF ( lberry .OR. lelfield ) THEN
      IF ( npool > 1 ) CALL errore( 'iosys', &
           'Berry Phase/electric fields not implemented with pools', 1 )
-     IF ( noncolin .AND. okvan )  CALL errore( 'iosys', &
-         'Noncolinear Berry Phase/electric fields not implemented with USPP', 1 )
      IF ( lgauss .OR. ltetra ) CALL errore( 'iosys', &
           'Berry Phase/electric fields only for insulators!', 1 )
   END IF
@@ -1049,6 +1051,9 @@ SUBROUTINE iosys()
   nppstr_     = nppstr
   gdir_       = gdir
   lberry_     = lberry
+  lcalc_z2_   = lcalc_z2
+  z2_m_threshold_ = z2_m_threshold
+  z2_z_threshold_ = z2_z_threshold
   lelfield_   = lelfield
   lorbm_      = lorbm
   efield_     = efield
@@ -1180,46 +1185,56 @@ SUBROUTINE iosys()
     CASE( 'grimme-d2', 'Grimme-D2', 'DFT-D', 'dft-d' )
       !
       llondon= .TRUE.
-      ts_vdw = .FALSE.
+      ts_vdw_= .FALSE.
       lxdm   = .FALSE.
       !
     CASE( 'TS', 'ts', 'ts-vdw', 'ts-vdW', 'tkatchenko-scheffler' )
       !
       llondon= .FALSE.
-      ts_vdw = .TRUE.
+      ts_vdw_= .TRUE.
       lxdm   = .FALSE.
       !
     CASE( 'XDM', 'xdm' )
        !
       llondon= .FALSE.
-      ts_vdw = .FALSE.
+      ts_vdw_= .FALSE.
       lxdm   = .TRUE.
       !
     CASE DEFAULT
       !
       llondon= .FALSE.
-      ts_vdw = .FALSE.
+      ts_vdw_= .FALSE.
       lxdm   = .FALSE.
       !
   END SELECT
-  IF (ts_vdw) CALL errore("iosys","Tkatchenko-Scheffler not implemented", 1)
   IF ( london ) THEN
      CALL infomsg("iosys","london is obsolete, use ""vdw_corr='grimme-d2'"" instead")
      llondon = .TRUE.
   END IF
+  IF ( xdm ) THEN
+     CALL infomsg("iosys","xdm is obsolete, use ""vdw_corr='xdm'"" instead")
+     lxdm = .TRUE.
+  END IF
+  IF ( ts_vdw ) THEN
+     CALL infomsg("iosys","ts_vdw is obsolete, use ""vdw_corr='TS'"" instead")
+     ts_vdw_ = .TRUE.
+  END IF
+  IF ( llondon.AND.lxdm .OR. llondon.AND.ts_vdw_ .OR. lxdm.AND.ts_vdw_ ) &
+     CALL errore("iosys","must choose a unique vdW correction!", 1)
+  !
   IF ( llondon) THEN
      lon_rcut    = london_rcut
      scal6       = london_s6
      ! not sure if it can be called here
      !   CALL init_london ( )
   END IF
-  IF ( xdm ) THEN
-     CALL infomsg("iosys","xdm is obsolete, use ""vdw_corr='xdm'"" instead")
-     lxdm = .TRUE.
-  END IF
-  IF ( lxdm) THEN
+  IF ( lxdm ) THEN
      a1i = xdm_a1
      a2i = xdm_a2
+  END IF
+  IF ( ts_vdw_ ) THEN
+     vdw_isolated = ts_vdw_isolated
+     vdw_econv_thr= ts_vdw_econv_thr
   END IF
   !
   ! QM/MM specific parameters

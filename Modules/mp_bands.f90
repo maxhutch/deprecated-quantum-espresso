@@ -9,7 +9,7 @@
 MODULE mp_bands
   !----------------------------------------------------------------------------
   !
-  USE mp, ONLY : mp_barrier, mp_bcast, mp_size, mp_rank
+  USE mp, ONLY : mp_barrier, mp_bcast, mp_size, mp_rank, mp_comm_split
   USE parallel_include
   !
   IMPLICIT NONE 
@@ -41,7 +41,7 @@ CONTAINS
   SUBROUTINE mp_start_bands( nband_, ntg_, parent_comm )
     !---------------------------------------------------------------------------
     !
-    ! ... Divide processors (of the "parent_comm" group) into bands pools
+    ! ... Divide processors (of the "parent_comm" group) into nband_ pools
     ! ... Requires: nband_, read from command line
     ! ...           parent_comm, typically processors of a k-point pool
     ! ...           (intra_pool_comm)
@@ -51,7 +51,7 @@ CONTAINS
     INTEGER, INTENT(IN) :: nband_, parent_comm
     INTEGER, INTENT(IN), OPTIONAL :: ntg_
     !
-    INTEGER :: parent_nproc = 1, parent_mype = 0, ierr = 0
+    INTEGER :: parent_nproc = 1, parent_mype = 0
     !
 #if defined (__MPI)
     !
@@ -63,9 +63,9 @@ CONTAINS
     !
     nbgrp = nband_
     !
-    IF ( nbgrp < 1 .OR. nbgrp > parent_nproc ) CALL errore( 'init_bands', &
+    IF ( nbgrp < 1 .OR. nbgrp > parent_nproc ) CALL errore( 'mp_start_bands',&
                           'invalid number of band groups, out of range', 1 )
-    IF ( MOD( parent_nproc, nbgrp ) /= 0 ) CALL errore( 'init_bands', &
+    IF ( MOD( parent_nproc, nbgrp ) /= 0 ) CALL errore( 'mp_start_bands', &
         'n. of band groups  must be divisor of parent_nproc', 1 )
     ! 
     ! ... Set number of processors per band group
@@ -84,19 +84,13 @@ CONTAINS
     !
     ! ... the intra_bgrp_comm communicator is created
     !
-    CALL MPI_COMM_SPLIT( parent_comm, my_bgrp_id, parent_mype, intra_bgrp_comm, ierr )
-    !
-    IF ( ierr /= 0 ) CALL errore( 'init_bands', &
-                     'intra band group communicator initialization', ABS(ierr) )
+    CALL mp_comm_split( parent_comm, my_bgrp_id, parent_mype, intra_bgrp_comm )
     !
     CALL mp_barrier( parent_comm )
     !
     ! ... the inter_bgrp_comm communicator is created                     
     !     
-    CALL MPI_COMM_SPLIT( parent_comm, me_bgrp, parent_mype, inter_bgrp_comm, ierr )  
-    !
-    IF ( ierr /= 0 ) CALL errore( 'init_bands', &
-                     'inter band group communicator initialization', ABS(ierr) )
+    CALL mp_comm_split( parent_comm, me_bgrp, parent_mype, inter_bgrp_comm )  
     !
     IF ( PRESENT(ntg_) ) THEN
        ntask_groups = ntg_
@@ -112,7 +106,7 @@ CONTAINS
     IMPLICIT NONE
     INTEGER, INTENT(IN) :: comm, nbnd
 
-    INTEGER :: npe, myrank, ierror, rest, k
+    INTEGER :: npe, myrank, rest, k
 
     myrank = mp_rank(comm)
     npe = mp_size(comm)

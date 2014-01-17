@@ -53,7 +53,6 @@ SUBROUTINE vofrho_x( nfi, rhor, drhor, rhog, drhog, rhos, rhoc, tfirst, &
                                   add_drhoph, stress_local, force_loc, self_vofhar
       USE fft_base,         ONLY: dfftp, dffts
       USE ldaU_cp,          ONLY: e_hubbard
-      USE step_penalty,     ONLY: e_pen
       USE control_flags,    ONLY: ts_vdw
       USE tsvdw_module,     ONLY: tsvdw_calculate
       USE tsvdw_module,     ONLY: EtsvdW,UtsvdW,FtsvdW,HtsvdW
@@ -109,7 +108,7 @@ SUBROUTINE vofrho_x( nfi, rhor, drhor, rhog, drhog, rhos, rhoc, tfirst, &
       IF (ts_vdw) THEN
         !
         CALL start_clock( 'ts_vdw' )
-        CALL tsvdw_calculate(tau0)
+        CALL tsvdw_calculate(tau0,rhor)
         CALL stop_clock( 'ts_vdw' )
         !
       END IF
@@ -597,7 +596,7 @@ SUBROUTINE vofrho_x( nfi, rhor, drhor, rhog, drhog, rhos, rhoc, tfirst, &
       !
       !     etot is the total energy ; ekin, enl were calculated in rhoofr
       !
-      etot = ekin + eht + epseu + enl + exc + ebac +e_hubbard + eextfor + e_pen
+      etot = ekin + eht + epseu + enl + exc + ebac +e_hubbard + eextfor
       !
       !     Add TS-vdW energy to etot here... (RAD)
       !

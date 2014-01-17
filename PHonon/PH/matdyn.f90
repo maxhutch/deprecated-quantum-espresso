@@ -137,7 +137,7 @@ PROGRAM matdyn
   USE io_global,  ONLY : ionode, ionode_id, stdout
   USE io_dyn_mat, ONLY : read_dyn_mat_param, read_dyn_mat_header, &
                          read_ifc_param, read_ifc
-  USE cell_base,  ONLY : at, bg
+  USE cell_base,  ONLY : at, bg, celldm
   USE constants,  ONLY : RY_TO_THZ, RY_TO_CMM1, amu_ry
   USE symm_base,  ONLY : set_sym
   USE rap_point_group,  ONLY : code_group
@@ -183,7 +183,7 @@ PROGRAM matdyn
   LOGICAL :: readtau, la2F, xmlifc, lo_to_split, na_ifc, fd
   !
   REAL(DP) :: qhat(3), qh, DeltaE, Emin=0._dp, Emax, E, DOSofE(1), qq
-  REAL(DP) :: celldm(6), delta, pathL
+  REAL(DP) :: delta, pathL
   REAL(DP), ALLOCATABLE :: xqaux(:,:)
   INTEGER, ALLOCATABLE :: nqb(:)
   INTEGER :: n, i, j, it, nq, nqx, na, nb, ndos, iout, nqtot, iout_dyn, iout_eig
@@ -277,10 +277,13 @@ PROGRAM matdyn
      CALL mp_bcast(l1,ionode_id, world_comm)
      CALL mp_bcast(l2,ionode_id, world_comm)
      CALL mp_bcast(l3,ionode_id, world_comm)
+     CALL mp_bcast(na_ifc,ionode_id, world_comm)
+     CALL mp_bcast(fd,ionode_id, world_comm)
      CALL mp_bcast(la2f,ionode_id, world_comm)
      CALL mp_bcast(q_in_band_form,ionode_id, world_comm)
      CALL mp_bcast(eigen_similarity,ionode_id, world_comm)
      CALL mp_bcast(q_in_cryst_coord,ionode_id, world_comm)
+     CALL mp_bcast(point_label_type,ionode_id, world_comm)
 
      !
      ! read force constants
@@ -774,6 +777,7 @@ SUBROUTINE readfc ( flfrc, nr1, nr2, nr3, epsil, nat,    &
   !
   USE kinds,      ONLY : DP
   USE ifconstants,ONLY : tau => tau_blk, ityp => ityp_blk, frc, zeu
+  USE cell_base,  ONLY : celldm
   USE io_global,  ONLY : ionode, ionode_id, stdout
   USE mp,         ONLY : mp_bcast 
   USE mp_world,   ONLY : world_comm 
@@ -781,16 +785,16 @@ SUBROUTINE readfc ( flfrc, nr1, nr2, nr3, epsil, nat,    &
   !
   IMPLICIT NONE
   ! I/O variable
-  CHARACTER(LEN=256) flfrc
-  INTEGER ibrav, nr1,nr2,nr3,nat, ntyp
-  REAL(DP) alat, at(3,3), epsil(3,3)
-  LOGICAL has_zstar
+  CHARACTER(LEN=256) :: flfrc
+  INTEGER :: ibrav, nr1,nr2,nr3,nat, ntyp
+  REAL(DP) :: alat, at(3,3), epsil(3,3)
+  LOGICAL :: has_zstar
   ! local variables
-  INTEGER i, j, na, nb, m1,m2,m3
-  INTEGER ibid, jbid, nabid, nbbid, m1bid,m2bid,m3bid
-  REAL(DP) amass(ntyp), amass_from_file, celldm(6), omega
-  INTEGER nt
-  CHARACTER(LEN=3) atm
+  INTEGER :: i, j, na, nb, m1,m2,m3
+  INTEGER :: ibid, jbid, nabid, nbbid, m1bid,m2bid,m3bid
+  REAL(DP) :: amass(ntyp), amass_from_file, omega
+  INTEGER :: nt
+  CHARACTER(LEN=3) :: atm
   !
   !
   IF (ionode) OPEN (unit=1,file=flfrc,status='old',form='formatted')
@@ -2034,7 +2038,7 @@ SUBROUTINE a2Fdos &
   USE io_global,   ONLY : ionode, ionode_id
   USE mp,          ONLY : mp_bcast
   USE mp_world,    ONLY : world_comm
-  USE mp_global,   ONLY : intra_image_comm
+  USE mp_images,   ONLY : intra_image_comm
   USE ifconstants, ONLY : zeu, tau_blk
   USE constants,  ONLY : pi, RY_TO_THZ
   !

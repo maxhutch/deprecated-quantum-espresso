@@ -80,14 +80,16 @@ SUBROUTINE check_initial_status(auxdyn)
                               start_q, last_q, current_iq, &
                               tmp_dir_ph, lgamma, &
                               ext_recover, ext_restart, tmp_dir_phq, lqdir, &
-                              start_irr, last_irr, newgrid, qplot
+                              start_irr, last_irr, newgrid, qplot, &
+                              done_zeu, done_start_zstar, done_epsil, &
+                              done_zue, with_ext_images
   USE save_ph,         ONLY : tmp_dir_save
   USE units_ph,        ONLY : iudyn
   USE ph_restart,      ONLY : check_directory_phsave, check_available_bands,&
                               allocate_grid_variables, ph_writefile
   USE freq_ph,         ONLY : current_iu
   USE io_rho_xml,      ONLY : write_rho
-  USE mp_global,       ONLY : nimage, intra_image_comm
+  USE mp_images,       ONLY : nimage, intra_image_comm
   USE io_global,       ONLY : ionode, ionode_id
   USE io_files,        ONLY : prefix
   USE mp,              ONLY : mp_bcast
@@ -176,7 +178,7 @@ SUBROUTINE check_initial_status(auxdyn)
 !
 ! If there are more than one image, divide the work among the images
 !
-  IF (nimage > 1) CALL image_q_irr()
+  IF (nimage > 1 .AND. .NOT. with_ext_images) CALL image_q_irr()
 !
   IF (recover) THEN
 !
@@ -234,6 +236,11 @@ SUBROUTINE check_initial_status(auxdyn)
      ELSEIF (iq_start<0) THEN
         CALL errore('check_initial_status','wrong iq_start',1)
      ENDIF
+  ELSE
+     done_zeu=.FALSE.
+     done_start_zstar=.FALSE.
+     done_epsil=.FALSE.
+     done_zue=.FALSE.
   ENDIF
   !
   !  Create a new directory where the ph variables are saved and copy
@@ -332,7 +339,7 @@ SUBROUTINE check_initial_status(auxdyn)
    USE grid_irr_iq, ONLY : irr_iq, npert_irr_iq, comp_irr_iq, nsymq_iq
    USE control_ph, ONLY : start_q, last_q
    USE io_global,  ONLY : stdout
-   USE mp_global,  ONLY : nimage, my_image_id
+   USE mp_images,  ONLY : nimage, my_image_id
    USE symm_base,  ONLY : nsym
 
    IMPLICIT NONE
@@ -480,7 +487,7 @@ SUBROUTINE check_initial_status(auxdyn)
    USE el_phon,     ONLY : elph
    USE wrappers,  ONLY : f_copy
    USE mp,        ONLY : mp_barrier
-   USE mp_global, ONLY : my_image_id, nimage, intra_image_comm
+   USE mp_images, ONLY : my_image_id, nimage, intra_image_comm
    USE io_global, ONLY : stdout, ionode
 
    IMPLICIT NONE

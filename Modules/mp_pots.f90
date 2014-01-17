@@ -9,7 +9,7 @@
 MODULE mp_pots
   !----------------------------------------------------------------------------
   !
-  USE mp, ONLY : mp_barrier, mp_size, mp_rank
+  USE mp, ONLY : mp_barrier, mp_size, mp_rank, mp_comm_split
   USE parallel_include
   !
   IMPLICIT NONE 
@@ -41,7 +41,7 @@ CONTAINS
     !
     INTEGER, INTENT(IN) :: npot_, parent_comm
     !
-    INTEGER :: parent_nproc = 1, parent_mype  = 0, ierr = 0
+    INTEGER :: parent_nproc = 1, parent_mype  = 0
     !
 #if defined (__MPI)
     !
@@ -53,12 +53,16 @@ CONTAINS
     !
     npot = npot_
     !
+    IF ( npot < 1 .OR. npot > parent_nproc ) CALL errore( 'mp_start_pots',&
+                          'invalid number of pot groups, out of range', 1 )
+
+    IF ( MOD( parent_nproc, npot ) /= 0 ) CALL errore( 'mp_start_pots', &
+           'invalid number of pots, parent_nproc /= nproc_pot * npot', 1 )  
+    !
     ! ... number of cpus per pot (they are created inside each parent group)
     !
     nproc_pot = parent_nproc / npot
     !
-    IF ( MOD( parent_nproc, npot ) /= 0 ) CALL errore( 'init_pots', &
-           'invalid number of pots, parent_nproc /= nproc_pot * npot', 1 )  
     !
     ! ... my_pot_id  =  pot index for this processor    ( 0 : npot - 1 )
     ! ... me_pot     =  processor index within the pot  ( 0 : nproc_pot - 1 )
@@ -70,19 +74,13 @@ CONTAINS
     !
     ! ... the intra_pot_comm communicator is created
     !
-    CALL MPI_COMM_SPLIT( parent_comm, my_pot_id, parent_mype, intra_pot_comm, ierr )
-    !
-    IF ( ierr /= 0 ) CALL errore( 'init_pots', &
-                          'intra pot communicator initialization', ABS(ierr) )
+    CALL mp_comm_split( parent_comm, my_pot_id, parent_mype, intra_pot_comm )
     !
     CALL mp_barrier( parent_comm )
     !
     ! ... the inter_pot_comm communicator is created
     !
-    CALL MPI_COMM_SPLIT( parent_comm, me_pot, parent_mype, inter_pot_comm, ierr )
-    !
-    IF ( ierr /= 0 ) &
-       CALL errore( 'init_pots', 'inter pot communicator initialization', ABS(ierr) )
+    CALL mp_comm_split( parent_comm, me_pot, parent_mype, inter_pot_comm )
     !
 #endif
     !

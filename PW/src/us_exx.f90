@@ -63,8 +63,16 @@ MODULE us_exx
   END FUNCTION bexg_merge
   !
   !-----------------------------------------------------------------------
-  SUBROUTINE addusxx_g(rhoc, xkq, becphi, xk, becpsi)
+  SUBROUTINE addusxx_g(rhoc, xkq, xk, flag, becphi_c, becpsi_c, becphi_r, becpsi_r )
     !-----------------------------------------------------------------------
+    ! 
+    ! Add US contribution to rhoc for hybrid functionals
+    !   flag = 'c': add complex contribution
+    !   flag = 'r': add real contribution to the real part of rhoc 
+    !   flag = 'i': add real contribution to the imaginary part
+    ! The two latter cases are used together with gamma tricks to store contributions
+    ! from two bands into the real and the imaginary part separately
+    !
     USE constants,           ONLY : tpi
     USE ions_base,           ONLY : nat, ntyp => nsp, ityp, tau
     USE uspp,                ONLY : nkb, vkb,  okvan, indv_ijkb0
@@ -75,32 +83,45 @@ MODULE us_exx
     USE gvecs,               ONLY : ngms, nls, nlsm
     USE cell_base,           ONLY : tpiba
     USE control_flags,       ONLY : gamma_only
-    ! ... k-points version
     IMPLICIT NONE
     !
     ! In input I get a slice of <beta|left> and <beta|right> only for this kpoint and this band
     COMPLEX(DP),INTENT(inout) :: rhoc(dffts%nnr)
-    COMPLEX(DP),INTENT(in)    :: becphi(nkb)
-    COMPLEX(DP),INTENT(in)    :: becpsi(nkb)
+    COMPLEX(DP),INTENT(in), OPTIONAL  :: becphi_c(nkb), becpsi_c(nkb)
+    REAL(DP),   INTENT(in), OPTIONAL  :: becphi_r(nkb), becpsi_r(nkb)
     REAL(DP),   INTENT(in)    :: xkq(3), xk(3)
+    CHARACTER(LEN=1), INTENT(in) :: flag
     !
     ! ... local variables
-    INTEGER :: ikb, jkb, ijkb0, ih, jh, na, np !, ijh
-    INTEGER :: ig
-    COMPLEX(DP) :: skk, becfac
     !
     REAL(DP),ALLOCATABLE    :: qmod(:), q(:,:), qq(:),  &! the modulus of G
                                ylmk0(:,:)  ! the spherical harmonics
     COMPLEX(DP),ALLOCATABLE :: qgm(:), aux(:), eigqts(:)
-    REAL(DP) :: arg
-    !
-    CALL start_clock( 'addusxx' )
-    !
-    ALLOCATE(ylmk0(ngms, lmaxq * lmaxq))    
-    ALLOCATE(qmod(ngms), qq(ngms), q(3,ngm))
-    ALLOCATE(qgm(ngms), aux(ngms))
+    INTEGER :: ikb, jkb, ijkb0, ih, jh, na, np, ig
+    COMPLEX(DP) :: skk, becfac_c
+    REAL(DP) :: arg, becfac_r
+    LOGICAL :: add_complex, add_real, add_imaginary
     !
     IF(.not.(okvan .and. dovanxx)) RETURN
+    CALL start_clock( 'addusxx' )
+    !
+    add_complex = ( flag=='c' .OR. flag=='C' )
+    add_real    = ( flag=='r' .OR. flag=='R' )
+    add_imaginary=( flag=='i' .OR. flag=='I' )
+    IF ( .NOT. (add_complex .OR. add_real .OR. add_imaginary) ) &
+       CALL errore('addusxx_g', 'called with incorrect flag: '//flag, 1 )
+    IF ( .NOT. gamma_only .AND. ( add_real .OR. add_imaginary) ) &
+       CALL errore('addusxx_g', 'need gamma tricks for this flag: '//flag, 2 )
+    IF ( gamma_only .AND. add_complex ) &
+       CALL errore('addusxx_g', 'gamma trick not good for this flag: '//flag, 3 )
+    IF ( ( add_complex .AND. (.NOT. PRESENT(becphi_c) .OR. .NOT. PRESENT(becpsi_c) ) ) .OR. &
+         ( add_real    .AND. (.NOT. PRESENT(becphi_r) .OR. .NOT. PRESENT(becpsi_r) ) ) .OR. &
+         ( add_imaginary.AND.(.NOT. PRESENT(becphi_r) .OR. .NOT. PRESENT(becpsi_r) ) ) )    &
+       CALL errore('addusxx_g', 'called with incorrect arguments', 2 )
+    !
+    ALLOCATE(qmod(ngms), qgm(ngms), aux(ngms))
+    ALLOCATE(ylmk0(ngms, lmaxq * lmaxq))    
+    ALLOCATE(qq(ngms), q(3,ngm))
     !
     DO ig = 1, ngms
       q(:,ig) = xk(:) - xkq(:) + g(:,ig)
@@ -110,6 +131,7 @@ MODULE us_exx
     !
     CALL ylmr2 (lmaxq * lmaxq, ngms, q, qq, ylmk0)
     !
+    DEALLOCATE(qq, q)
     ALLOCATE(eigqts(nat))
     DO na = 1, nat
       arg = tpi* SUM( (xk(:) - xkq(:))*tau(:,na) )
@@ -127,7 +149,7 @@ MODULE us_exx
             !
             ATOMS_LOOP : &
             DO na = 1, nat
-            IF (ityp(na)==np) THEN
+              IF (ityp(na)==np) THEN
                 !
                 ! NOTE: the next line counts the number of beta in the atoms (not types!) before 
                 ! this one (na) this hack is necessary to minimize the number of calls to qvan2
@@ -135,26 +157,44 @@ MODULE us_exx
                 ikb = ijkb0 + ih
                 jkb = ijkb0 + jh
 
-                becfac = CONJG(becphi(ikb))*becpsi(jkb)
-                !
-                DO ig = 1, ngms
-                    skk = eigts1(mill(1,ig), na) * &
-                          eigts2(mill(2,ig), na) * &
-                          eigts3(mill(3,ig), na)
-                    aux(ig) = qgm(ig)*eigqts(na)*skk*becfac
-                ENDDO
-                !
-                DO ig = 1,ngms
-                  rhoc(nls(ig)) = rhoc(nls(ig)) + aux(ig)
-                ENDDO
-                !
-                IF(gamma_only) THEN
-                  DO ig = gstart,ngms
-                    rhoc(nlsm(ig)) = rhoc(nlsm(ig)) + CONJG(aux(ig))
-                  ENDDO
+                IF ( add_complex ) THEN
+                   becfac_c = CONJG(becphi_c(ikb))*becpsi_c(jkb)
+                   DO ig = 1, ngms
+                      skk = eigts1(mill(1,ig), na) * &
+                            eigts2(mill(2,ig), na) * &
+                            eigts3(mill(3,ig), na)
+                      aux(ig) = qgm(ig)*eigqts(na)*skk*becfac_c
+                   ENDDO
+                   DO ig = 1,ngms
+                     rhoc(nls(ig)) = rhoc(nls(ig)) + aux(ig)
+                   ENDDO
+                ELSE 
+                   becfac_r = becphi_r(ikb)*becpsi_r(jkb)
+                   DO ig = 1, ngms
+                      skk = eigts1(mill(1,ig), na) * &
+                            eigts2(mill(2,ig), na) * &
+                            eigts3(mill(3,ig), na)
+                      aux(ig) = qgm(ig)*eigqts(na)*skk*becfac_r
+                   ENDDO
+                   IF ( add_real ) THEN
+                      DO ig = 1,ngms
+                         rhoc(nls(ig)) = rhoc(nls(ig)) + aux(ig)
+                      ENDDO
+                      DO ig = gstart,ngms
+                         rhoc(nlsm(ig)) = rhoc(nlsm(ig)) + CONJG(aux(ig))
+                      ENDDO
+                   ELSE IF ( add_imaginary ) THEN
+                      DO ig = 1,ngms
+                         rhoc(nls(ig)) = rhoc(nls(ig)) + (0.0_dp,1.0_dp)*aux(ig)
+                      ENDDO
+                      DO ig = gstart,ngms
+                         rhoc(nlsm(ig)) = rhoc(nlsm(ig)) + &
+                                          (0.0_dp,1.0_dp)*CONJG(aux(ig))
+                      ENDDO
+                   ENDIF
                 ENDIF
                 !
-            END IF
+              END IF
             ENDDO ATOMS_LOOP  ! nat
             !
         END DO ! jh
@@ -174,7 +214,7 @@ MODULE us_exx
   !-----------------------------------------------------------------------
   !
   !-----------------------------------------------------------------------
-  SUBROUTINE newdxx_g(vc, xkq, becphi, xk, deexx)
+  SUBROUTINE newdxx_g(vc, xkq, xk, flag, deexx, becphi_r, becphi_c)
     !-----------------------------------------------------------------------
     !
     ! This subroutine computes some sort of EXX contribution to the non-local 
@@ -182,6 +222,10 @@ MODULE us_exx
     !   alpha_Ii = \int \sum_Jj Q_IJ(r) V^{i,j}_Fock <beta_J|phi_j> d^3(r)
     ! The actual contribution will be (summed outside)
     !  H = H+\sum_I |beta_I> alpha_Ii
+    !   flag = 'c': V(G) is contained in complex array vc
+    !   flag = 'r': V(G)=v_1(G)+i v_2(G): select v_1(G)
+    !   flag = 'i': V(G)=v_1(G)+i v_2(G): select v_2(G)
+    ! The two latter cases are used together with gamma tricks
     ! 
     USE constants,      ONLY : tpi
     USE ions_base,      ONLY : nat, ntyp => nsp, ityp, tau
@@ -190,17 +234,19 @@ MODULE us_exx
     USE fft_base,       ONLY : dffts
     USE gvect,          ONLY : ngm, nl, nlm, gg, g, gstart, &
                                eigts1, eigts2, eigts3, mill
-    USE gvecs,          ONLY : ngms, nls
+    USE gvecs,          ONLY : ngms, nls, nlsm
     USE cell_base,      ONLY : tpiba, omega
     USE control_flags,  ONLY : gamma_only
-    ! ... k-points version
+    !
     IMPLICIT NONE
     !
-    ! In input I get a slice of <beta|left> and <beta|right> only for this kpoint and this band
     COMPLEX(DP),INTENT(in)    :: vc(dffts%nnr)
-    COMPLEX(DP),INTENT(in)    :: becphi(nkb)
+    ! In input I get a slice of <beta|left> and <beta|right> only for this kpoint and this band
+    COMPLEX(DP),INTENT(in), OPTIONAL :: becphi_c(nkb)
+    REAL(DP),   INTENT(in), OPTIONAL :: becphi_r(nkb)
     COMPLEX(DP),INTENT(inout) :: deexx(nkb)
     REAL(DP),INTENT(in)       :: xk(3), xkq(3)
+    CHARACTER(LEN=1), INTENT(IN) :: flag
     !
     ! ... local variables
     INTEGER :: ikb, jkb, ijkb0, ih, jh, na, np !, ijh
@@ -212,20 +258,31 @@ MODULE us_exx
     COMPLEX(DP),ALLOCATABLE :: qgm(:),    & ! the Q(r) function
                                auxvc(:), &  ! vc in order of |g|
                                eigqts(:)
+    COMPLEX(DP) :: fp, fm
     REAL(DP) :: arg
+    LOGICAL :: add_complex, add_real, add_imaginary
+    !
+    IF(.not.(okvan .and. dovanxx)) RETURN
+    !
+    add_complex = ( flag=='c' .OR. flag=='C' )
+    add_real    = ( flag=='r' .OR. flag=='R' )
+    add_imaginary=( flag=='i' .OR. flag=='I' )
+    IF ( .NOT. (add_complex .OR. add_real .OR. add_imaginary) ) &
+       CALL errore('newdxx_g', 'called with incorrect flag: '//flag, 1 )
+    IF ( .NOT. gamma_only .AND. ( add_real .OR. add_imaginary) ) &
+       CALL errore('newdxx_g', 'need gamma tricks for this flag: '//flag, 2 )
+    IF ( gamma_only .AND. add_complex ) &
+       CALL errore('newdxx_g', 'gamma trick not good for this flag: '//flag, 3 )
+    IF ( ( add_complex .AND. .NOT. PRESENT(becphi_c) ) .OR. &
+         ( add_real    .AND. .NOT. PRESENT(becphi_r) ) .OR. &
+         ( add_imaginary.AND..NOT. PRESENT(becphi_r) ) )    &
+       CALL errore('newdxx_g', 'called with incorrect arguments', 2 )
     !
     CALL start_clock( 'newdxx' )
     !
-    fact=1
-    IF(gamma_only) fact=2
-    !
+    ALLOCATE(qgm(ngms), auxvc(ngms), qmod( ngms))
     ALLOCATE(ylmk0(ngms, lmaxq**2))    
-    ALLOCATE(qgm(ngms))
-    ALLOCATE(auxvc(ngms))
-    ALLOCATE (qmod( ngms), qq(ngms), q(3,ngm))
-
-    !
-    IF(.not.(okvan .and. dovanxx)) RETURN
+    ALLOCATE(qq(ngms), q(3,ngm))
     !
     DO ig = 1, ngms
       q(:,ig) = xk(:) - xkq(:) + g(:,ig)
@@ -234,6 +291,7 @@ MODULE us_exx
     ENDDO
     CALL ylmr2 (lmaxq * lmaxq, ngms, q, qq, ylmk0)
     !
+    DEALLOCATE(qq, q)
     ALLOCATE(eigqts(nat))
     DO na = 1, nat
       arg = tpi* SUM( (xk(:) - xkq(:))*tau(:,na) )
@@ -241,43 +299,72 @@ MODULE us_exx
     END DO
     !
     ! reindex just once at the beginning
+    ! select real or imaginary part if so desired
+    ! fact=2 to account for G and -G components
+    !
     auxvc = (0._dp, 0._dp)
-    auxvc(1:ngms) = vc(nls(1:ngms) )
+    IF ( add_complex ) THEN
+       auxvc(1:ngms) = vc(nls(1:ngms) )
+       fact=1.0_dp
+    ELSE IF ( add_real ) THEN
+       DO ig = 1, ngms
+          fp = (vc(nls(ig)) + vc(nlsm(ig)))/2.0_dp
+          fm = (vc(nls(ig)) - vc(nlsm(ig)))/2.0_dp
+          auxvc(ig) = CMPLX( DBLE(fp), AIMAG(fm), KIND=dp)
+       END DO
+       fact=2.0_dp
+    ELSE IF ( add_imaginary ) THEN
+       DO ig = 1, ngms
+          fp = (vc(nls(ig)) + vc(nlsm(ig)))/2.0_dp
+          fm = (vc(nls(ig)) - vc(nlsm(ig)))/2.0_dp
+          auxvc(ig) = CMPLX( AIMAG(fp), -DBLE(fm), KIND=dp)
+       END DO
+       fact=2.0_dp
+    END IF 
     !
     DO np = 1, ntyp
       ONLY_FOR_USPP : &
       IF ( upf(np)%tvanp ) THEN
         DO ih = 1, nh(np)
-        DO jh = 1, nh(np)
+          DO jh = 1, nh(np)
             !
             CALL qvan2(ngms, ih, jh, np, qmod, qgm, ylmk0)
             !
             ATOMS_LOOP : &
             DO na = 1, nat
-            IF (ityp(na)==np) THEN
+              IF (ityp(na)==np) THEN
                 !
                 ! NOTE: see addusxx_g for the next line:
                 ijkb0 = indv_ijkb0(na) !SUM(nh(ityp(1:na)))-nh(ityp(na)) 
                 ikb = ijkb0 + ih
                 jkb = ijkb0 + jh
                 !
-                DO ig = 1, ngms
-                    skk = eigts1(mill(1,ig), na) * &
-                          eigts2(mill(2,ig), na) * &
-                          eigts3(mill(3,ig), na)
-                    !
-                    deexx(ikb) = deexx(ikb) + becphi(jkb)*auxvc(ig)*fact*omega &
-                                             *CONJG(eigqts(na)*skk*qgm(ig)) ! \sum_J Q_IJ V_F
-                ENDDO
-                !
-                IF(gamma_only.and.gstart==2) THEN
-                    deexx(ikb) = deexx(ikb) - becphi(jkb)*auxvc(1)*omega &
-                                             *CONJG(eigqts(na)*skk*qgm(1))
+                IF(gamma_only) THEN
+                   DO ig = 1, ngms
+                      skk = eigts1(mill(1,ig), na) * &
+                            eigts2(mill(2,ig), na) * &
+                            eigts3(mill(3,ig), na)
+                      ! \sum_J Q_IJ V_F
+                      deexx(ikb) = deexx(ikb) + becphi_r(jkb)*auxvc(ig)*fact &
+                                      * omega*CONJG(eigqts(na)*skk*qgm(ig)) 
+                   ENDDO
+                   !
+                   IF(gstart==2) deexx(ikb) = deexx(ikb) - becphi_r(jkb)* &
+                               auxvc(1)*omega*CONJG(eigqts(na)*skk*qgm(1))
+                ELSE
+                   DO ig = 1, ngms
+                      skk = eigts1(mill(1,ig), na) * &
+                            eigts2(mill(2,ig), na) * &
+                            eigts3(mill(3,ig), na)
+                      ! \sum_J Q_IJ V_F
+                      deexx(ikb) = deexx(ikb) + becphi_c(jkb)*auxvc(ig)*fact &
+                                      * omega*CONJG(eigqts(na)*skk*qgm(ig)) 
+                   ENDDO
                 ENDIF
                 !
-            END IF
+              END IF
             ENDDO ATOMS_LOOP ! nat
-        ENDDO ! jh
+          ENDDO ! jh
         ENDDO ! ih
       END IF &
       ONLY_FOR_USPP 
@@ -452,9 +539,6 @@ MODULE us_exx
     USE gvecs,               ONLY : nls
     USE wvfct,               ONLY : nbnd, npwx !, ecutwfc
     USE control_flags,       ONLY : gamma_only
-!     USE noncollin_module,     ONLY : npol
-
-    ! ... k-points version
     IMPLICIT NONE
     !
     ! In input I get a slice of <beta|left> and <beta|right> only for this kpoint and this band
@@ -470,7 +554,6 @@ MODULE us_exx
     INTEGER :: ig
     !
     COMPLEX(DP),ALLOCATABLE :: vkbp(:,:)  ! the <beta_I| function
-    COMPLEX(DP) :: fact
     !
     CALL start_clock( 'nlxx_pot' )
     !
@@ -485,25 +568,24 @@ MODULE us_exx
       ONLY_FOR_USPP : &
       IF ( upf(np)%tvanp ) THEN
           DO na = 1, nat
-          IF (ityp(na)==np) THEN
+            IF (ityp(na)==np) THEN
               DO ih = 1, nh(np)
                 ikb = ijkb0 + ih
                 !
                 IF(ABS(deexx(ikb))<eps_occ) CYCLE
-                fact = -exxalfa*deexx(ikb)
                 !
                 IF (gamma_only) THEN
                    DO ig = 1,npwp
-                      hpsi(ig) = hpsi(ig) + DBLE(fact*vkbp(ig, ikb))
+                      hpsi(ig) = hpsi(ig)-exxalfa*DBLE(deexx(ikb))*vkbp(ig,ikb)
                    ENDDO
                 ELSE
                    DO ig = 1,npwp
-                      hpsi(ig) = hpsi(ig) + fact*vkbp(ig, ikb)
+                      hpsi(ig) = hpsi(ig) - exxalfa*deexx(ikb)*vkbp(ig,ikb)
                    ENDDO
                 ENDIF
               ENDDO
               ijkb0 = ijkb0 + nh(np)
-          END IF
+            END IF
           ENDDO ! nat
       ELSE ONLY_FOR_USPP 
           DO na = 1, nat
@@ -525,10 +607,14 @@ MODULE us_exx
   !------------------------------------------------------------------------
   SUBROUTINE addusxx_r(rho,becphi,becpsi)
     !------------------------------------------------------------------------
-    ! This routine adds to the two wavefunctions density the part which is due to
-    ! the US augmentation.
-    ! NOTE: the density in this case is NOT real and NOT normalized to 1, except when
-    !       (bec)phi and (bec)psi are equal.
+    ! This routine adds to the two wavefunctions density (in real space) 
+    ! the part which is due to the US augmentation.
+    ! NOTE: the density in this case is NOT real and NOT normalized to 1, 
+    !       except when (bec)phi and (bec)psi are equal, or with gamma tricks.
+    ! With gamma tricks: input rho must contain contributions from band 1
+    ! in real part, from band 2 in imaginary part; call routine twice, with
+    ! becphi=<beta|phi(1)> (real), then with becphi=-i*<beta|phi(2)> (imaginary)
+    !
     USE ions_base,        ONLY : nat, ityp
     USE cell_base,        ONLY : omega
     USE fft_base,         ONLY : dffts

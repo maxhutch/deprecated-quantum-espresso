@@ -52,6 +52,7 @@ constraints_module.o : kind.o
 control_flags.o : kind.o
 control_flags.o : parameters.o
 dspev_drv.o : kind.o
+dspev_drv.o : mp.o
 dspev_drv.o : mp_bands.o
 dspev_drv.o : mp_diag.o
 electrons_base.o : constants.o
@@ -155,6 +156,7 @@ mp_diag.o : mp_pools.o
 mp_diag.o : mp_world.o
 mp_diag.o : parallel_include.o
 mp_global.o : command_line_options.o
+mp_global.o : mp.o
 mp_global.o : mp_bands.o
 mp_global.o : mp_diag.o
 mp_global.o : mp_images.o
@@ -314,6 +316,19 @@ stick_set.o : kind.o
 stick_set.o : parallel_include.o
 stick_set.o : stick_base.o
 timestep.o : kind.o
+tsvdw.o : cell_base.o
+tsvdw.o : constants.o
+tsvdw.o : control_flags.o
+tsvdw.o : fft_base.o
+tsvdw.o : funct.o
+tsvdw.o : io_global.o
+tsvdw.o : ions_base.o
+tsvdw.o : kind.o
+tsvdw.o : mp.o
+tsvdw.o : mp_bands.o
+tsvdw.o : mp_images.o
+tsvdw.o : parallel_include.o
+tsvdw.o : uspp.o
 upf.o : ../iotk/src/iotk_module.o
 upf.o : kind.o
 upf.o : pseudo_types.o
